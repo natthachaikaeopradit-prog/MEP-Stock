@@ -1943,18 +1943,18 @@
             let userLogs = systemLogs.filter(l => currentUser && (currentUser.isAdmin || l.user === currentUser.name));
 
             if (!userLogs || userLogs.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-6 text-xs">ยังไม่มีประวัติการทำรายการ</div>';
+                container.innerHTML = '<div class="text-center text-gray-500 py-6">ไม่พบประวัติการทำรายการ</div>';
             } else {
                 userLogs.forEach(l => {
                     let div = document.createElement('div');
-                    div.className = "p-2 bg-gray-950 border border-gray-800 rounded-lg flex items-center justify-between text-gray-300";
+                    div.className = "p-2.5 bg-gray-800 rounded-xl border border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2";
                     div.innerHTML = `
-                        <div>
-                            <span class="text-emerald-400 font-bold">[${escapeHTML(l.time)}]</span>
-                            <span class="text-gray-200 font-semibold ml-1">${escapeHTML(l.user)}</span> 
-                            <span class="text-gray-400">(${escapeHTML(l.company)})</span>: 
-                            <span>${escapeHTML(l.action)}</span>
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-gray-400 font-mono text-[11px] shrink-0">[${escapeHTML(l.time)}]</span>
+                            <span class="text-emerald-400 font-bold shrink-0">${escapeHTML(l.company)}</span>
+                            <span class="text-gray-200 truncate">${escapeHTML(l.action)}</span>
                         </div>
+                        <span class="text-gray-400 text-[11px] shrink-0">โดย: ${escapeHTML(l.user)}</span>
                     `;
                     container.appendChild(div);
                 });
@@ -1968,12 +1968,9 @@
         }
 
         function clearSystemLogs() {
-            if (confirm("คุณต้องการล้างประวัติการทำรายการใช่หรือไม่?")) {
-                if (currentUser && currentUser.isAdmin) {
-                    systemLogs = [];
-                } else if (currentUser) {
-                    systemLogs = systemLogs.filter(l => l.user !== currentUser.name);
-                }
+            if (!currentUser) return;
+            if (confirm("คุณต้องการล้างประวัติการทำรายการของคุณใช่หรือไม่?")) {
+                systemLogs = systemLogs.filter(l => l.user !== currentUser.name);
                 saveData();
                 openSummaryBook();
             }
