@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบคลังอุปกรณ์ MEP (Smart Stock Management)</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -681,6 +682,24 @@
             </div>
         </div>
     </div>
+
+
+    <!-- ==================== FIREBASE SDK (CDN SCRIPT) ==================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsP7wBL4RZ3PFht9RPWpMu6PGV-4LTI",
+            authDomain: "pw-hub-8e58c.firebaseapp.com",
+            projectId: "pw-hub-8e58c",
+            storageBucket: "pw-hub-8e58c.appspot.com",
+            messagingSenderId: "968401119582",
+            appId: "1:968401119582:web:d08e37ebf8a21798aec7cf"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        console.log("Firebase initialized successfully:", app.name);
+    </script>
 
 
     <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
@@ -1963,7 +1982,7 @@
                 });
             }
 
-            document.getElementById('summary-modal').classList.remove('hidden');
+            document.getElementById('summary-modal').classList.add('hidden');
         }
 
         function closeSummaryBook() {
