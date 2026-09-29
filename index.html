@@ -64,6 +64,16 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #6b7280;
         }
+
+        @media (max-width: 767px) {
+            [id$="-modal"] { padding: 0 !important; align-items: stretch !important; }
+            [id$="-modal"] > div { width: 100% !important; max-width: none !important; height: 100% !important; max-height: none !important; border-radius: 0 !important; overflow-y: auto; padding-bottom: 5.5rem; }
+            body { padding-bottom: 4.5rem; }
+            #install-btn, button[onclick*="ai-box"] { bottom: 5rem !important; }
+            #line-fab { bottom: 9rem !important; }
+            #ai-box { bottom: 9rem !important; }
+        }
+        @media (min-width: 768px) { #mobile-nav { display: none !important; } }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-gray-950">
@@ -98,6 +108,8 @@
                     </div>
                 </button>
 
+                <button onclick="openPlans()" title="แพ็กเกจสมาชิก / ติดต่อ LINE" class="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition border border-amber-500/20"><i class="fa-solid fa-crown flex items-center justify-center w-5 h-5"></i></button>
+                <button id="dir-btn" onclick="openDirectory()" title="สมุดตรวจสอบ" class="hidden p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition border border-blue-500/20"><i class="fa-solid fa-address-book flex items-center justify-center w-5 h-5"></i></button>
                 <button onclick="toggleCompanyModal()" title="สลับบริษัท" class="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700">
                     <i class="fa-solid fa-building flex items-center justify-center w-5 h-5"></i>
                 </button>
@@ -224,6 +236,11 @@
                     <button onclick="openMemberBook()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium px-4 py-2 rounded-xl text-sm border border-gray-700 flex items-center gap-2 transition">
                         <i class="fa-solid fa-users text-blue-400"></i>
                         สมุดสมาชิก
+                    </button>
+
+                    <button id="manage-members-btn" onclick="openManageMembers()" class="hidden bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-medium px-4 py-2 rounded-xl text-sm border border-blue-500/30 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-user-shield text-blue-400"></i>
+                        จัดการสมาชิกคลัง
                     </button>
 
                     <button id="owner-create-user-btn" onclick="openOwnerCreateUserModal()" class="hidden bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-medium px-4 py-2 rounded-xl text-sm border border-emerald-500/30 flex items-center gap-2 transition">
@@ -623,6 +640,9 @@
                 <!-- Message Input Form -->
                 <div class="p-3 bg-gray-900 border-t border-gray-800 flex gap-2">
                     <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="พิมพ์ข้อความที่นี่..." class="flex-1 bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500">
+                    <button onclick="sendLocation()" title="ส่งตำแหน่งที่ตั้ง" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-red-400 px-3 rounded-xl"><i class="fa-solid fa-location-dot"></i></button>
+                    <button onclick="document.getElementById('chat-photo').click()" title="ถ่ายรูป/ส่งรูป" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-blue-400 px-3 rounded-xl"><i class="fa-solid fa-camera"></i></button>
+                    <input type="file" id="chat-photo" accept="image/*" capture="environment" class="hidden" onchange="sendPhoto(this)">
                     <button onclick="sendChatMessage()" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5">
                         <i class="fa-solid fa-paper-plane text-xs"></i>
                         <span>ส่ง</span>
@@ -668,6 +688,25 @@
     </div>
 
     <!-- ==================== MODAL: MEMBERS BOOK ==================== -->
+    <!-- ==================== MODAL: MANAGE COMPANY MEMBERS ==================== -->
+    <div id="manage-members-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-100 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-user-shield text-blue-400"></i> สมาชิกที่เข้าคลังนี้ได้
+            </h3>
+            <p id="manage-members-company" class="text-xs text-emerald-400 mb-4"></p>
+
+            <form onsubmit="handleAddMember(event)" class="flex gap-2 mb-4">
+                <input type="text" id="add-member-username" required placeholder="ใส่ Username ของสมาชิก" class="flex-1 bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold px-4 py-2 rounded-xl text-sm transition">เพิ่ม</button>
+            </form>
+
+            <div id="manage-members-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+
+            <button onclick="closeManageMembers()" class="mt-5 w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-gray-200">ปิด</button>
+        </div>
+    </div>
+
     <div id="member-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
             <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
@@ -882,6 +921,14 @@
         let chatMessagesDB = JSON.parse(localStorage.getItem('mep_chat_messages')) || {};
         let systemLogs = JSON.parse(localStorage.getItem('mep_logs')) || [];
 
+        const LINE_URL = 'https://line.me/ti/p/~0626415241';
+        const MAX_MEMBERS = 10;
+        const PLANS = {
+            trial:{n:'ทดลองใช้ 1 เดือน',p:0,d:30}, m1:{n:'รายเดือน',p:199,d:30}, m3:{n:'3 เดือน',p:299,d:90},
+            m6:{n:'6 เดือน',p:599,d:180}, y1:{n:'1 ปี',p:999,d:365}, life:{n:'ถาวร',p:2400,d:null}
+        };
+        let subsDB = JSON.parse(localStorage.getItem('mep_subs') || '{}');
+        let adminAudit = JSON.parse(localStorage.getItem('mep_admin_audit') || '[]');
         let currentUser = null;
         let currentCompany = '';
         let targetEditCompany = '';
@@ -932,6 +979,14 @@
                     }
                 }
 
+                if (currentUser && currentCompany && !canAccessCompany(currentCompany)) {
+                    currentCompany = '';
+                    document.getElementById('app-section').classList.add('hidden');
+                    document.getElementById('app-section').classList.remove('flex');
+                    if (document.getElementById('company-modal').classList.contains('hidden')) toggleCompanyModal();
+                    saveSession('');
+                }
+
                 if (currentCompany && companyToolsDB[currentCompany]) {
                     toolsList = companyToolsDB[currentCompany];
                     filterTools();
@@ -963,7 +1018,9 @@
             mep_company_tools:  { get: () => companyToolsDB,   set: v => { companyToolsDB = v; } },
             mep_chat_groups:    { get: () => chatGroupsDB,     set: v => { chatGroupsDB = v; } },
             mep_chat_messages:  { get: () => chatMessagesDB,   set: v => { chatMessagesDB = v; } },
-            mep_logs:           { get: () => systemLogs,       set: v => { systemLogs = v; } }
+            mep_logs:           { get: () => systemLogs,       set: v => { systemLogs = v; } },
+            mep_subs:           { get: () => subsDB,           set: v => { subsDB = v; } },
+            mep_admin_audit:    { get: () => adminAudit,       set: v => { adminAudit = v; } }
         };
         let cloudReady = false;
         let cloudLast = {};      // ข้อมูล (JSON) ล่าสุดที่ตรงกับบนคลาวด์
@@ -1078,6 +1135,8 @@
                 localStorage.setItem('mep_chat_groups', JSON.stringify(chatGroupsDB));
                 localStorage.setItem('mep_chat_messages', JSON.stringify(chatMessagesDB));
                 localStorage.setItem('mep_logs', JSON.stringify(systemLogs));
+                localStorage.setItem('mep_subs', JSON.stringify(subsDB));
+                localStorage.setItem('mep_admin_audit', JSON.stringify(adminAudit));
             } catch (err) {
                 if (!cloudReady) alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล พื้นที่จัดเก็บความจำเต็ม หรือบราวเซอร์จำกัดการบันทึก!");
             }
@@ -1184,31 +1243,28 @@
             document.body.removeChild(textArea);
         }
 
+        function getCompanyMemberSet(comp) {
+            let set = new Set((allowedMembersDB[comp] || []).map(x => String(x).trim().toLowerCase()));
+            if (companyOwnersDB[comp]) set.add(String(companyOwnersDB[comp]).trim().toLowerCase());
+            return set;
+        }
+
+        // เข้าคลังได้เฉพาะ: แอดมิน VVIP / เจ้าของคลัง / ชื่อที่อยู่ในรายชื่อสมาชิกของคลังนั้น
         function canAccessCompany(compName) {
             if (!currentUser) return false;
-            
+
             let curUname = (currentUser.username || '').trim().toLowerCase();
             if (currentUser.isAdmin || VVIP_USERNAMES.some(u => u.toLowerCase() === curUname)) {
                 return true;
             }
+            return getCompanyMemberSet(compName).has(curUname) && subActive(compName);
+        }
 
-            if (companyOwnersDB[compName] && companyOwnersDB[compName].trim().toLowerCase() === curUname) {
-                return true;
-            }
-
-            if (currentUser.createdByOwner && currentUser.createdByOwner.trim().toLowerCase() === (companyOwnersDB[compName] || '').trim().toLowerCase()) {
-                return true;
-            }
-
-            if (currentUser.department === compName) {
-                return true;
-            }
-
-            if (allowedMembersDB[compName] && allowedMembersDB[compName].some(m => m.trim().toLowerCase() === curUname)) {
-                return true;
-            }
-
-            return false;
+        // ผู้ใช้ที่ "อยู่ในคลังปัจจุบัน" (ใช้กรองสมุดสมาชิกและรายชื่อแชต)
+        function usersInCurrentCompany() {
+            if (currentUser && currentUser.isAdmin) return usersDB;
+            let set = getCompanyMemberSet(currentCompany);
+            return usersDB.filter(u => u.username && set.has(u.username.trim().toLowerCase()));
         }
 
         function isWarehouseOwner() {
@@ -1268,6 +1324,7 @@
             if (!restoring) {
                 logAction(currentUser.name, "-", isWarehouseOwner() ? "เข้าสู่ระบบด้วยสิทธิ์ VVIP Admin / เจ้าของคลัง" : "เข้าสู่ระบบ");
             }
+            updateTopButtons();
             toggleCompanyModal();
         }
 
@@ -1321,6 +1378,7 @@
 
         function logout() {
             try { localStorage.removeItem('mep_session'); } catch (e) {}
+            document.getElementById('mobile-nav').classList.add('hidden');
             currentUser = null;
             currentCompany = '';
             document.getElementById('app-section').classList.add('hidden');
@@ -1443,7 +1501,7 @@
             let accessibleCompanies = companiesList.filter(c => canAccessCompany(c));
 
             if (accessibleCompanies.length === 0) {
-                container.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-center text-xs">คุณยังไม่มีสิทธิ์เข้าถึงคลังบริษัทใดๆ กรุณาติดต่อผู้ดูแลระบบหรือเจ้าของคลัง</div>`;
+                container.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-center text-xs">คุณยังไม่มีสิทธิ์เข้าถึงคลังบริษัทใดๆ กรุณาติดต่อผู้ดูแลระบบหรือเจ้าของคลัง (หรือแพ็กเกจของคลังหมดอายุ)</div>`;
                 return;
             }
 
@@ -1589,15 +1647,18 @@
             document.getElementById('app-section').classList.add('flex');
 
             let ownerBtn = document.getElementById('owner-create-user-btn');
+            let manageBtn = document.getElementById('manage-members-btn');
             if(isWarehouseOwner()) {
                 ownerBtn.classList.remove('hidden');
+                manageBtn.classList.remove('hidden');
             } else {
                 ownerBtn.classList.add('hidden');
+                manageBtn.classList.add('hidden');
             }
 
             updateAutoCodePreview();
             filterTools();
-            logAction(currentUser.name, currentCompany, "เลือกเข้าจัดการคลัง");
+            if (isStealthAdmin(currentCompany)) auditAdmin(currentCompany, 'เข้าตรวจสอบคลัง'); else logAction(currentUser.name, currentCompany, "เลือกเข้าจัดการคลัง");
         }
 
         function openOwnerCreateUserModal() {
@@ -1632,6 +1693,7 @@
                 return;
             }
 
+            if (getCompanyMemberSet(currentCompany).size >= MAX_MEMBERS) { alert('คลังนี้มีสมาชิกครบ ' + MAX_MEMBERS + ' คนแล้ว'); return; }
             if(usersDB.some(x => x.username && x.username.trim().toLowerCase() === u.toLowerCase())) {
                 alert("Username นี้มีผู้ใช้งานแล้วในระบบ!");
                 return;
@@ -1977,7 +2039,7 @@
             memberContainer.innerHTML = '';
 
             let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
-            let otherUsers = usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
+            let otherUsers = usersInCurrentCompany().filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
             if(otherUsers.length === 0) {
                 memberContainer.innerHTML = '<div class="text-xs text-gray-500 text-center">ไม่มีสมาชิกอื่นในระบบให้เลือก</div>';
             } else {
@@ -2066,9 +2128,9 @@
                 }
             });
 
-            let otherUsers = usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
+            let otherUsers = usersInCurrentCompany().filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
             if(otherUsers.length === 0) {
-                dmContainer.innerHTML = '<div class="text-[10px] text-gray-500 px-2 py-1">ไม่มีสมาชิกอื่นในระบบ</div>';
+                dmContainer.innerHTML = '<div class="text-[10px] text-gray-500 px-2 py-1">ไม่มีสมาชิกอื่นในคลังนี้</div>';
             } else {
                 otherUsers.forEach(u => {
                     let isDmActive = (activeChatType === 'direct' && activeChatTargetId.trim().toLowerCase() === u.username.trim().toLowerCase());
@@ -2180,7 +2242,7 @@
                         <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
                             <span class="text-[10px] text-gray-500 mb-1">${escapeHTML(m.sender)} (${m.time})</span>
                             <div class="p-3 rounded-2xl text-sm max-w-xs break-words ${isMe ? 'bg-emerald-600 text-gray-950 font-medium' : 'bg-gray-800 text-gray-200 border border-gray-700'}">
-                                ${escapeHTML(m.text)}
+                                ${chatBody(m)}
                             </div>
                         </div>
                     </div>
@@ -2190,14 +2252,84 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        function openManageMembers() {
+            if (!isWarehouseOwner()) { alert("สิทธิ์เฉพาะเจ้าของคลังหรือ Admin เท่านั้น!"); return; }
+            document.getElementById('manage-members-company').innerText = 'คลัง: ' + currentCompany;
+            renderManageMembers();
+            document.getElementById('manage-members-modal').classList.remove('hidden');
+        }
+
+        function closeManageMembers() {
+            document.getElementById('manage-members-modal').classList.add('hidden');
+        }
+
+        function renderManageMembers() {
+            let box = document.getElementById('manage-members-list');
+            box.innerHTML = '';
+            let owner = String(companyOwnersDB[currentCompany] || '').trim().toLowerCase();
+            let names = (allowedMembersDB[currentCompany] || []).slice();
+            if (owner && !names.some(n => String(n).trim().toLowerCase() === owner)) names.unshift(companyOwnersDB[currentCompany]);
+
+            if (!names.length) {
+                box.innerHTML = '<div class="text-center text-gray-500 py-3 text-xs">ยังไม่มีสมาชิก</div>';
+                return;
+            }
+            names.forEach(n => {
+                let low = String(n).trim().toLowerCase();
+                let u = usersDB.find(x => x.username && x.username.trim().toLowerCase() === low);
+                let isOwnerRow = (low === owner);
+                let isAdminRow = VVIP_USERNAMES.some(v => v.toLowerCase() === low) || (u && u.isAdmin);
+                let tag = isOwnerRow ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 ml-2">เจ้าของ</span>' : '';
+                let del = (isOwnerRow || isAdminRow) ? '' :
+                    `<button onclick="removeMember('${escapeHTML(String(n))}')" class="text-red-400 hover:text-red-300 p-1" title="ลบออกจากคลัง"><i class="fa-solid fa-user-minus"></i></button>`;
+                let div = document.createElement('div');
+                div.className = 'p-3 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between';
+                div.innerHTML = `<div class="text-sm text-gray-200 truncate">${escapeHTML(u ? u.name : String(n))} <span class="text-xs text-gray-500 font-mono">@${escapeHTML(String(n))}</span>${tag}</div>${del}`;
+                box.appendChild(div);
+            });
+        }
+
+        function handleAddMember(e) {
+            e.preventDefault();
+            if (!isWarehouseOwner()) return;
+            let input = document.getElementById('add-member-username');
+            let uname = input.value.trim();
+            let user = usersDB.find(x => x.username && x.username.trim().toLowerCase() === uname.toLowerCase());
+            if (!user) {
+                alert('ไม่พบ Username นี้ในระบบ ให้สมาชิกสมัครก่อน หรือใช้ปุ่ม "สร้างบัญชีสมาชิกเข้าคลัง"');
+                return;
+            }
+            if (!allowedMembersDB[currentCompany]) allowedMembersDB[currentCompany] = [];
+            if (getCompanyMemberSet(currentCompany).size >= MAX_MEMBERS) { alert('คลังนี้มีสมาชิกครบ ' + MAX_MEMBERS + ' คนแล้ว'); return; }
+            if (getCompanyMemberSet(currentCompany).has(user.username.trim().toLowerCase())) {
+                alert('สมาชิกคนนี้อยู่ในคลังนี้แล้ว');
+                return;
+            }
+            allowedMembersDB[currentCompany].push(user.username);
+            saveData();
+            logAction(currentUser.name, currentCompany, `เพิ่มสมาชิก [@${user.username}] เข้าคลัง`);
+            input.value = '';
+            renderManageMembers();
+        }
+
+        function removeMember(uname) {
+            if (!isWarehouseOwner()) return;
+            if (!confirm(`ลบ @${uname} ออกจากคลัง "${currentCompany}" ใช่หรือไม่?`)) return;
+            allowedMembersDB[currentCompany] = (allowedMembersDB[currentCompany] || []).filter(n => String(n).trim().toLowerCase() !== String(uname).trim().toLowerCase());
+            saveData();
+            logAction(currentUser.name, currentCompany, `ลบสมาชิก [@${uname}] ออกจากคลัง`);
+            renderManageMembers();
+        }
+
         function openMemberBook() {
             let container = document.getElementById('member-list-container');
             container.innerHTML = '';
 
-            if (!usersDB || usersDB.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">ไม่พบรายชื่อสมาชิกในระบบ</div>';
+            let bookUsers = usersInCurrentCompany();
+            if (!bookUsers || bookUsers.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">ไม่พบรายชื่อสมาชิกในคลังนี้</div>';
             } else {
-                usersDB.forEach(u => {
+                bookUsers.forEach(u => {
                     let div = document.createElement('div');
                     div.className = "p-3 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between";
                     let isVvip = VVIP_USERNAMES.some(v => v.toLowerCase() === (u.username || '').toLowerCase()) || u.isAdmin;
@@ -2272,6 +2404,244 @@
                 saveData();
                 openSummaryBook();
             }
+        }
+    </script>
+
+    <!-- ปุ่มติดตั้งแอป -->
+    <button id="install-btn" onclick="installApp()" class="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-sm shadow-2xl shadow-emerald-500/30 transition">
+        <i class="fa-solid fa-download"></i> ติดตั้งแอป
+    </button>
+    <div id="install-help" class="hidden fixed inset-0 z-[60] bg-black/70 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-sm text-gray-200">
+            <h3 class="text-lg font-bold text-emerald-400 mb-3">วิธีติดตั้ง PW-Hub</h3>
+            <div id="install-help-body" class="space-y-2 leading-relaxed"></div>
+            <button onclick="document.getElementById('install-help').classList.add('hidden')" class="mt-5 w-full py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700">ปิด</button>
+        </div>
+    </div>
+    <script>
+        let deferredInstall = null;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isStandalone) document.getElementById('install-btn').classList.add('hidden');
+
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            deferredInstall = e;
+        });
+        window.addEventListener('appinstalled', function () {
+            document.getElementById('install-btn').classList.add('hidden');
+        });
+
+        function showInstallHelp(html) {
+            document.getElementById('install-help-body').innerHTML = html;
+            document.getElementById('install-help').classList.remove('hidden');
+        }
+
+        async function installApp() {
+            if (deferredInstall) {
+                deferredInstall.prompt();
+                try { await deferredInstall.userChoice; } catch (e) {}
+                deferredInstall = null;
+                return;
+            }
+            const ua = navigator.userAgent || '';
+            const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS) {
+                showInstallHelp('<p><b>ต้องเปิดด้วย Safari เท่านั้น</b></p>' +
+                    '<p>1. กดปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น) ที่แถบด้านล่าง</p>' +
+                    '<p>2. เลื่อนลง แล้วกด <b>เพิ่มไปยังหน้าจอโฮม</b></p>' +
+                    '<p>3. กด <b>เพิ่ม</b> มุมขวาบน</p>');
+            } else if (/android/i.test(ua)) {
+                showInstallHelp('<p>1. กดเมนู <b>⋮</b> มุมขวาบนของ Chrome</p>' +
+                    '<p>2. เลือก <b>ติดตั้งแอป</b> หรือ <b>เพิ่มลงในหน้าจอหลัก</b></p>' +
+                    '<p>3. กด <b>ติดตั้ง</b></p>');
+            } else {
+                showInstallHelp('<p>ใช้ <b>Chrome</b> หรือ <b>Edge</b></p>' +
+                    '<p>1. กดไอคอนติดตั้ง (รูปจอมีลูกศรลง) ที่ปลายช่องที่อยู่เว็บด้านขวา</p>' +
+                    '<p>2. หรือเมนู <b>⋮ / …</b> แล้วเลือก <b>ติดตั้ง PW-Hub</b></p>');
+            }
+        }
+    </script>
+
+    <!-- ===== แพ็กเกจ / LINE ===== -->
+    <div id="plans-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-amber-400 mb-1"><i class="fa-solid fa-crown"></i> แพ็กเกจสมาชิก</h3>
+            <p id="plans-current" class="text-xs text-emerald-400 mb-3"></p>
+            <div id="plans-list" class="space-y-2 mb-3"></div>
+            <p class="text-[11px] text-gray-400 mb-3">ทุกแพ็กเกจรองรับสมาชิกได้ 10 คนต่อคลัง โอนเงินแล้วส่งสลิปทาง LINE เพื่อเปิดใช้งาน<br>ผู้ดูแลระบบอาจเข้าตรวจสอบคลังเพื่อดูแลระบบและช่วยแก้ปัญหาได้</p>
+            <button onclick="openLine()" class="w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-gray-950 font-bold"><i class="fa-brands fa-line"></i> ติดต่อผ่าน LINE</button>
+            <button onclick="document.getElementById('plans-modal').classList.add('hidden')" class="mt-2 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm">ปิด</button>
+        </div>
+    </div>
+
+    <!-- ===== สมุดตรวจสอบ (tarkun1104 เท่านั้น) ===== -->
+    <div id="dir-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-blue-400 mb-3"><i class="fa-solid fa-address-book"></i> สมุดบริษัทและพนักงาน (เฉพาะ tarkun1104)</h3>
+            <div id="dir-body" class="space-y-3 text-sm"></div>
+            <button onclick="document.getElementById('dir-modal').classList.add('hidden')" class="mt-4 w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm">ปิด</button>
+        </div>
+    </div>
+
+    <!-- ===== ผู้ช่วยค้นหา ===== -->
+    <button onclick="document.getElementById('ai-box').classList.toggle('hidden')" class="fixed bottom-4 left-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm shadow-2xl"><i class="fa-solid fa-robot"></i> ผู้ช่วย</button>
+    <div id="ai-box" class="hidden fixed bottom-20 left-4 z-50 w-72 bg-gray-900 border border-gray-700 rounded-2xl p-4 shadow-2xl">
+        <div class="text-xs text-gray-400 mb-2">พิมพ์สิ่งที่ต้องการ เช่น "แชต" "สมาชิก" "แพ็กเกจ" หรือชื่อของที่จะหา เช่น "สายไฟ"</div>
+        <div class="flex gap-2"><input id="ai-input" onkeydown="if(event.key==='Enter')aiAsk()" class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm" placeholder="ต้องการอะไร..."><button onclick="aiAsk()" class="bg-blue-500 rounded-xl px-3"><i class="fa-solid fa-arrow-right"></i></button></div>
+        <div id="ai-reply" class="text-xs text-emerald-300 mt-2"></div>
+    </div>
+
+    <script>
+        const thDate = t => t === null ? 'ตลอดชีพ' : new Date(t).toLocaleDateString('th-TH');
+        function ensureSub(c) {
+            if (!subsDB[c]) { subsDB[c] = { plan: 'trial', start: Date.now(), exp: Date.now() + 30 * 864e5 }; saveData(); }
+            return subsDB[c];
+        }
+        function subActive(c) { let r = ensureSub(c); return r.exp === null || Date.now() < r.exp; }
+        function isDirectoryOwner() { return !!currentUser && (currentUser.username || '').trim().toLowerCase() === 'tarkun1104'; }
+        function updateTopButtons() { document.getElementById('dir-btn').classList.toggle('hidden', !isDirectoryOwner()); document.getElementById('mobile-nav').classList.toggle('hidden', !currentUser); }
+        function isStealthAdmin(c) {
+            return !!currentUser && currentUser.isAdmin && !getCompanyMemberSet(c).has((currentUser.username || '').trim().toLowerCase());
+        }
+        function auditAdmin(c, action) {
+            adminAudit.unshift({ time: new Date().toLocaleString('th-TH'), admin: currentUser.username, company: c, action: action });
+            if (adminAudit.length > 300) adminAudit.length = 300;
+            saveData();
+        }
+        function openLine() {
+            if (LINE_URL.indexOf('YOUR_LINE_ID') > -1) { alert('ยังไม่ได้ตั้งค่า LINE ID ในระบบ'); return; }
+            window.open(LINE_URL, '_blank');
+        }
+        function openPlans() {
+            let cur = document.getElementById('plans-current');
+            if (currentCompany) { let r = ensureSub(currentCompany); cur.innerText = 'คลัง ' + currentCompany + ': ' + PLANS[r.plan].n + ' | ' + (subActive(currentCompany) ? 'ใช้ได้ถึง ' + thDate(r.exp) : 'หมดอายุแล้ว'); }
+            else cur.innerText = 'เลือกคลังเพื่อดูสถานะแพ็กเกจ';
+            document.getElementById('plans-list').innerHTML = Object.keys(PLANS).map(k =>
+                '<div class="flex justify-between p-3 bg-gray-800 rounded-xl border border-gray-700 text-sm"><span>' + PLANS[k].n + '</span><b class="text-amber-400">' + (PLANS[k].p ? PLANS[k].p.toLocaleString() + ' บาท' : 'ฟรี') + '</b></div>').join('');
+            document.getElementById('plans-modal').classList.remove('hidden');
+        }
+        function openDirectory() {
+            if (!isDirectoryOwner()) return;
+            let h = companiesList.map((c, i) => {
+                let r = ensureSub(c), set = getCompanyMemberSet(c);
+                let ms = usersDB.filter(u => u.username && set.has(u.username.trim().toLowerCase())).map(u => escapeHTML(u.name) + ' (@' + escapeHTML(u.username) + ', ' + escapeHTML(u.position || '-') + ')').join('<br>') || '-';
+                let opts = Object.keys(PLANS).map(k => '<option value="' + k + '">' + PLANS[k].n + '</option>').join('') + '<option value="off">ระงับ</option>';
+                return '<div class="p-3 bg-gray-800 rounded-xl border border-gray-700"><div class="font-bold text-gray-100">' + escapeHTML(c) + ' <span class="text-xs text-emerald-400">เจ้าของ: ' + escapeHTML(companyOwnersDB[c] || '-') + '</span></div>' +
+                    '<div class="text-xs mb-1 ' + (subActive(c) ? 'text-emerald-400' : 'text-red-400') + '">' + PLANS[r.plan].n + ' | ถึง ' + thDate(r.exp) + ' | สมาชิก ' + set.size + '/' + MAX_MEMBERS + '</div>' +
+                    '<div class="text-xs text-gray-300 mb-2">' + ms + '</div>' +
+                    '<div class="flex gap-2"><select id="plan-sel-' + i + '" class="flex-1 bg-gray-900 border border-gray-700 rounded-lg text-xs p-1">' + opts + '</select><button onclick="applyPlan(' + i + ')" class="bg-amber-500 text-gray-950 font-bold rounded-lg px-3 text-xs">ตั้งแพ็กเกจ</button></div></div>';
+            }).join('');
+            h += '<div class="p-3 bg-gray-800 rounded-xl border border-gray-700"><div class="font-bold text-amber-400 mb-1">บันทึกการเข้าตรวจสอบของแอดมิน</div><div class="text-xs text-gray-300 max-h-40 overflow-y-auto">' +
+                (adminAudit.slice(0, 50).map(a => escapeHTML(a.time + ' | ' + a.admin + ' | ' + a.company + ' | ' + a.action)).join('<br>') || '-') + '</div></div>';
+            document.getElementById('dir-body').innerHTML = h;
+            document.getElementById('dir-modal').classList.remove('hidden');
+        }
+        function applyPlan(i) {
+            if (!isDirectoryOwner()) return;
+            let c = companiesList[i], k = document.getElementById('plan-sel-' + i).value, r = ensureSub(c);
+            if (k === 'off') { r.exp = Date.now() - 1; }
+            else { let P = PLANS[k], base = (r.exp && r.exp > Date.now()) ? r.exp : Date.now(); r.plan = k; r.start = Date.now(); r.exp = P.d === null ? null : base + P.d * 864e5; }
+            saveData(); auditAdmin(c, 'ตั้งแพ็กเกจ: ' + (k === 'off' ? 'ระงับ' : PLANS[k].n)); openDirectory();
+        }
+
+        // ---- แชต: ตำแหน่ง / รูปภาพ ----
+        function pushChat(extra) {
+            let k = getChatKey(); if (!chatMessagesDB[k]) chatMessagesDB[k] = [];
+            chatMessagesDB[k].push(Object.assign({ sender: currentUser.name, senderUsername: currentUser.username, avatar: currentUser.avatar || DEFAULT_AVATAR,
+                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }), text: '' }, extra));
+            if (chatMessagesDB[k].length > 150) chatMessagesDB[k].splice(0, chatMessagesDB[k].length - 150);
+            saveData(); renderChatMessages();
+        }
+        function sendLocation() {
+            if (!navigator.geolocation) { alert('เครื่องนี้ไม่รองรับการระบุตำแหน่ง'); return; }
+            navigator.geolocation.getCurrentPosition(
+                pos => pushChat({ text: '📍 ตำแหน่งของฉัน', map: 'https://www.google.com/maps?q=' + pos.coords.latitude.toFixed(6) + ',' + pos.coords.longitude.toFixed(6) }),
+                () => alert('อ่านตำแหน่งไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์'), { enableHighAccuracy: true, timeout: 15000 });
+        }
+        function sendPhoto(input) {
+            let f = input.files && input.files[0]; if (!f) return;
+            let img = new Image();
+            img.onload = function () {
+                let sc = Math.min(1, 640 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+                cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+                cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                pushChat({ img: cv.toDataURL('image/jpeg', 0.55) }); input.value = '';
+            };
+            img.src = URL.createObjectURL(f);
+        }
+        function chatBody(m) {
+            let h = escapeHTML(m.text || '');
+            if (m.map && m.map.indexOf('https://www.google.com/maps?q=') === 0) h += '<br><a href="' + escapeHTML(m.map) + '" target="_blank" rel="noopener" class="underline">เปิดแผนที่</a>';
+            if (m.img && m.img.indexOf('data:image/jpeg;base64,') === 0) h += '<img src="' + m.img + '" class="rounded-xl max-w-full mt-1" alt="รูปภาพ">';
+            return h;
+        }
+
+        // ---- ผู้ช่วยค้นหา (จับคำสำคัญ) ----
+        function aiAsk() {
+            let q = document.getElementById('ai-input').value.trim(), low = q.toLowerCase(), out = document.getElementById('ai-reply');
+            if (!q) return;
+            const need = f => { if (!currentUser) { out.innerText = 'กรุณาล็อกอินก่อนครับ'; return; } f(); };
+            const intents = [
+                [['จัดการสมาชิก'], 'เปิดจัดการสมาชิกคลัง', () => { if (!currentCompany) out.innerText = 'เลือกคลังก่อนครับ'; else openManageMembers(); }],
+                [['สมุดตรวจสอบ', 'สมุดบริษัท'], 'เปิดสมุดตรวจสอบ', () => { if (isDirectoryOwner()) openDirectory(); else out.innerText = 'ไม่มีสิทธิ์เปิดหน้านี้'; }],
+                [['แพ็กเกจ', 'ราคา', 'ต่ออายุ', 'สมัครสมาชิก', 'ทดลอง'], 'เปิดหน้าแพ็กเกจ', openPlans],
+                [['line', 'ไลน์', 'ติดต่อ'], 'เปิด LINE', openLine],
+                [['แชต', 'แชท', 'chat', 'คุย'], 'เปิดแชต', () => { if (!currentCompany) out.innerText = 'เลือกคลังก่อนครับ'; else openChatLobby(); }],
+                [['สมาชิก', 'พนักงาน', 'รายชื่อ'], 'เปิดสมุดสมาชิก', () => { if (!currentCompany) out.innerText = 'เลือกคลังก่อนครับ'; else openMemberBook(); }],
+                [['ประวัติ', 'บันทึก', 'log'], 'เปิดสมุดบันทึกรายการ', () => { if (!currentCompany) out.innerText = 'เลือกคลังก่อนครับ'; else openSummaryBook(); }],
+                [['สลับคลัง', 'เปลี่ยนคลัง', 'บริษัท'], 'เปิดหน้าเลือกคลัง', toggleCompanyModal]
+            ];
+            let hit = intents.find(it => it[0].some(k => low.indexOf(k) > -1));
+            if (hit) { out.innerText = hit[1] + ' ✓'; need(hit[2]); return; }
+            if (!currentCompany) { out.innerText = 'เลือกคลังก่อน แล้วพิมพ์ชื่อของที่จะหาอีกครั้งครับ'; return; }
+            let term = q.replace(/ค้นหา|หาให้|หา|ขอดู|อยู่ไหน|ที่ไหน|มีไหม/g, '').trim() || q;
+            document.getElementById('search-box').value = term; filterTools();
+            let n = getFilteredTools().length;
+            out.innerText = n ? 'พบ ' + n + ' รายการที่ตรงกับ "' + term + '" แสดงในตารางแล้ว' : 'ไม่พบ "' + term + '" ในคลังนี้';
+            document.getElementById('search-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    </script>
+
+    <!-- ===== เมนูล่างสำหรับมือถือ (แยกเป็นหน้าๆ) ===== -->
+    <nav id="mobile-nav" class="hidden fixed bottom-0 inset-x-0 z-40 bg-gray-900 border-t border-gray-800 grid grid-cols-5 text-[11px] text-gray-300" style="padding-bottom:env(safe-area-inset-bottom,0px)">
+        <button onclick="navGo('stock')" class="py-2.5 flex flex-col items-center gap-1"><i class="fa-solid fa-boxes-stacked text-lg text-emerald-400"></i>สต็อก</button>
+        <button onclick="navGo('chat')" class="py-2.5 flex flex-col items-center gap-1"><i class="fa-solid fa-comments text-lg text-blue-400"></i>แชต</button>
+        <button onclick="navGo('members')" class="py-2.5 flex flex-col items-center gap-1"><i class="fa-solid fa-users text-lg text-purple-400"></i>สมาชิก</button>
+        <button onclick="navGo('logs')" class="py-2.5 flex flex-col items-center gap-1"><i class="fa-solid fa-book text-lg text-amber-400"></i>บันทึก</button>
+        <button onclick="openMenu()" class="py-2.5 flex flex-col items-center gap-1"><i class="fa-solid fa-bars text-lg text-gray-200"></i>เมนู</button>
+    </nav>
+
+    <div id="menu-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 space-y-2">
+            <h3 class="text-lg font-bold text-gray-100 mb-2">เมนู</h3>
+            <button onclick="menuDo(openLine)" class="w-full p-3 rounded-xl bg-green-500 text-gray-950 font-bold text-left"><i class="fa-brands fa-line w-6"></i> แชตกับเราทาง LINE</button>
+            <button onclick="menuDo(openPlans)" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-crown w-6 text-amber-400"></i> แพ็กเกจสมาชิก</button>
+            <button onclick="menuDo(()=>document.getElementById('ai-box').classList.remove('hidden'))" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-robot w-6 text-blue-400"></i> ผู้ช่วยค้นหา</button>
+            <button onclick="menuDo(toggleCompanyModal)" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-building w-6 text-emerald-400"></i> สลับคลังบริษัท</button>
+            <button onclick="menuDo(()=>{ if(currentCompany) openManageMembers(); else toggleCompanyModal(); })" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-user-shield w-6 text-blue-400"></i> จัดการสมาชิกคลัง</button>
+            <button id="menu-dir" onclick="menuDo(openDirectory)" class="hidden w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-address-book w-6 text-blue-400"></i> สมุดตรวจสอบ</button>
+            <button onclick="menuDo(openProfileModal)" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-left"><i class="fa-solid fa-user w-6 text-gray-300"></i> โปรไฟล์ของฉัน</button>
+            <button onclick="menuDo(logout)" class="w-full p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-left"><i class="fa-solid fa-right-from-bracket w-6"></i> ออกจากระบบ</button>
+            <button onclick="closeMenu()" class="w-full py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm">ปิด</button>
+        </div>
+    </div>
+
+    <button id="line-fab" onclick="openLine()" title="แชตกับเราทาง LINE" class="fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-green-500 hover:bg-green-400 text-gray-950 text-2xl shadow-2xl flex items-center justify-center"><i class="fa-brands fa-line"></i></button>
+
+    <script>
+        function closeMenu() { document.getElementById('menu-modal').classList.add('hidden'); }
+        function openMenu() { document.getElementById('menu-dir').classList.toggle('hidden', !isDirectoryOwner()); document.getElementById('menu-modal').classList.remove('hidden'); }
+        function menuDo(f) { closeMenu(); f(); }
+        function navGo(t) {
+            closeMenu();
+            if (t === 'stock') {
+                document.querySelectorAll('[id$="-modal"]').forEach(m => m.classList.add('hidden'));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (!currentCompany) toggleCompanyModal();
+                return;
+            }
+            if (!currentCompany) { if (document.getElementById('company-modal').classList.contains('hidden')) toggleCompanyModal(); return; }
+            ({ chat: openChatLobby, members: openMemberBook, logs: openSummaryBook })[t]();
         }
     </script>
 </body>
