@@ -216,6 +216,10 @@
                         <i class="fa-solid fa-file-pdf text-red-200"></i>
                         ส่งออก PDF
                     </button>
+                    <button onclick="shareStockLink()" class="bg-blue-600/25 hover:bg-blue-600/35 text-blue-300 font-medium px-4 py-2 rounded-xl text-sm border border-blue-500/30 flex items-center gap-2 transition shadow-md">
+                        <i class="fa-solid fa-share-nodes text-blue-200"></i>
+                        แชร์ลิงก์
+                    </button>
                 </div>
             </div>
 
@@ -853,6 +857,63 @@
             };
             systemLogs.unshift(log);
             saveData();
+        }
+
+        function shareStockLink() {
+            let shareUrl = window.location.href;
+            let shareTitle = `ระบบคลังอุปกรณ์ MEP Stock Management (${currentCompany || 'ระบบหลัก'})`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: shareTitle,
+                    text: `เข้ามาดูระบบจัดการคลังอุปกรณ์ MEP ของเราได้ที่ลิงก์นี้ครับ:`,
+                    url: shareUrl,
+                }).then(() => {
+                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'แชร์ลิงก์ระบบสำเร็จผ่าน Web Share API');
+                }).catch((error) => {
+                    if (error.name !== 'AbortError') {
+                        copyLinkToClipboard(shareUrl);
+                    }
+                });
+            } else {
+                copyLinkToClipboard(shareUrl);
+            }
+        }
+
+        function copyLinkToClipboard(url) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert("คัดลอกลิงก์สำหรับแชร์ไปยังคลิปบอร์ดเรียบร้อยแล้ว!");
+                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'คัดลอกลิงก์ระบบแชร์ไปยังคลิปบอร์ด');
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(url);
+                });
+            } else {
+                fallbackCopyTextToClipboard(url);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                let successful = document.execCommand('copy');
+                if (successful) {
+                    alert("คัดลอกลิงก์สำเร็จ!");
+                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'คัดลอกลิงก์ระบบสำเร็จ (Fallback)');
+                } else {
+                    alert("ไม่สามารถคัดลอกลิงก์ได้ กรุณาคัดลอก URL จากเบราว์เซอร์");
+                }
+            } catch (err) {
+                alert("ไม่สามารถคัดลอกลิงก์ได้ กรุณาคัดลอก URL จากเบราว์เซอร์");
+            }
+            document.body.removeChild(textArea);
         }
 
         function canAccessCompany(compName) {
@@ -1842,69 +1903,33 @@
             let container = document.getElementById('member-list-container');
             container.innerHTML = '';
 
-            const isCurrentVVIP = currentUser && (currentUser.isAdmin || VVIP_USERNAMES.some(v => v.toLowerCase() === currentUser.username.toLowerCase()));
-            const curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
-
-            usersDB.forEach(u => {
-                let deleteUserBtn = '';
-                let uUname = (u.username || '').trim().toLowerCase();
-
-                if(isCurrentVVIP && uUname !== curUname) {
-                    deleteUserBtn = `<button onclick="deleteUser('${escapeHTML(u.username)}')" title="ลบผู้ใช้นี้" class="text-red-400 hover:text-red-300 text-xs p-1"><i class="fa-solid fa-user-minus"></i></button>`;
-                }
-
-                let directChatBtn = '';
-                if(uUname !== curUname) {
-                    directChatBtn = `<button onclick="startDirectChatFromBook('${escapeHTML(u.username)}')" title="ส่งข้อความส่วนตัว" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1 transition"><i class="fa-solid fa-comment-dots"></i> แชตตรง</button>`;
-                }
-
-                let userAvatar = u.avatar || DEFAULT_AVATAR;
-                const isUNameVVIP = VVIP_USERNAMES.some(id => id.toLowerCase() === uUname) || u.isAdmin;
-                const badgeLabel = isUNameVVIP ? '<span class="text-[10px] bg-gradient-to-r from-amber-500 to-emerald-500 text-gray-950 font-extrabold px-1.5 py-0.5 rounded">VVIP Admin</span>' : '';
-
-                container.innerHTML += `
-                    <div class="p-3 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-between">
+            if (!usersDB || usersDB.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">ไม่พบรายชื่อสมาชิกในระบบ</div>';
+            } else {
+                usersDB.forEach(u => {
+                    let div = document.createElement('div');
+                    div.className = "p-3 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between";
+                    let isVvip = VVIP_USERNAMES.some(v => v.toLowerCase() === (u.username || '').toLowerCase()) || u.isAdmin;
+                    let badge = isVvip 
+                        ? `<span class="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-gray-950 font-extrabold text-[10px] rounded-md shadow-sm">VVIP Admin</span>` 
+                        : `<span class="px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded-md">สมาชิก</span>`;
+                    
+                    div.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <img src="${userAvatar}" class="w-10 h-10 rounded-xl object-cover bg-gray-900 border border-gray-700" alt="${escapeHTML(u.name)}">
+                            <img src="${u.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-xl object-cover border border-gray-600 bg-gray-700" alt="${escapeHTML(u.name)}">
                             <div>
-                                <div class="text-sm font-semibold text-gray-200 flex items-center gap-2">
-                                    ${escapeHTML(u.name)}${badgeLabel}
+                                <div class="font-bold text-gray-200 text-sm flex items-center gap-2">
+                                    ${escapeHTML(u.name)} ${badge}
                                 </div>
-                                <div class="text-xs text-gray-400">
-                                    Username: <span class="text-emerald-400 font-mono">@${escapeHTML(u.username)}</span> | 
-                                    ตำแหน่ง: <span class="text-blue-400">${escapeHTML(u.position || '-')}</span>
-                                </div>
+                                <div class="text-xs text-gray-400">@${escapeHTML(u.username)} | ตำแหน่ง: ${escapeHTML(u.position || '-')} | สังกัด: ${escapeHTML(u.department || '-')}</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            ${directChatBtn}${deleteUserBtn}
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                    container.appendChild(div);
+                });
+            }
 
             document.getElementById('member-modal').classList.remove('hidden');
-        }
-
-        function startDirectChatFromBook(targetUsername) {
-            closeMemberBook();
-            openChatLobby();
-            selectChatChannel('direct', targetUsername);
-        }
-
-        function deleteUser(username) {
-            const isCurrentVVIP = currentUser && (currentUser.isAdmin || VVIP_USERNAMES.some(v => v.toLowerCase() === currentUser.username.toLowerCase()));
-            if (!isCurrentVVIP) {
-                alert("คุณไม่มีสิทธิ์ในการลบสมาชิก!");
-                return;
-            }
-
-            if(confirm(`คุณต้องการลบผู้ใช้ @${username} ออกจากระบบหรือไม่?`)) {
-                usersDB = usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== username.trim().toLowerCase());
-                saveData();
-                logAction(currentUser.name, "-", `ลบสมาชิก @${username}`);
-                openMemberBook();
-            }
         }
 
         function closeMemberBook() {
@@ -1915,23 +1940,23 @@
             let container = document.getElementById('summary-logs-container');
             container.innerHTML = '';
 
-            if (!currentUser) return;
+            let userLogs = systemLogs.filter(l => currentUser && (currentUser.isAdmin || l.user === currentUser.name));
 
-            let curUname = currentUser.username.trim().toLowerCase();
-            let userLogs = systemLogs.filter(l => l.user === currentUser.name || (l.user && l.user.trim().toLowerCase() === curUname));
-
-            if (userLogs.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-6">คุณยังไม่มีประวัติการทำรายการในระบบ</div>`;
+            if (!userLogs || userLogs.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-6 text-xs">ยังไม่มีประวัติการทำรายการ</div>';
             } else {
                 userLogs.forEach(l => {
-                    container.innerHTML += `
-                        <div class="p-2.5 rounded-lg bg-gray-800/80 border border-gray-700/50 flex items-center justify-between gap-2">
-                            <span class="text-gray-400 font-mono">${escapeHTML(l.time)}</span>
-                            <span class="text-emerald-400 font-semibold">[${escapeHTML(l.user)}]</span>
-                            <span class="text-gray-300 flex-1 break-words">${escapeHTML(l.action)}</span>
-                            <span class="text-gray-500 text-[10px] bg-gray-900 px-2 py-0.5 rounded border border-gray-800">${escapeHTML(l.company)}</span>
+                    let div = document.createElement('div');
+                    div.className = "p-2 bg-gray-950 border border-gray-800 rounded-lg flex items-center justify-between text-gray-300";
+                    div.innerHTML = `
+                        <div>
+                            <span class="text-emerald-400 font-bold">[${escapeHTML(l.time)}]</span>
+                            <span class="text-gray-200 font-semibold ml-1">${escapeHTML(l.user)}</span> 
+                            <span class="text-gray-400">(${escapeHTML(l.company)})</span>: 
+                            <span>${escapeHTML(l.action)}</span>
                         </div>
                     `;
+                    container.appendChild(div);
                 });
             }
 
@@ -1943,14 +1968,13 @@
         }
 
         function clearSystemLogs() {
-            if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบประวัติการทำรายการทั้งหมดของคุณ?")) {
-                if (!currentUser) return;
-                
-                let curUname = currentUser.username.trim().toLowerCase();
-                systemLogs = systemLogs.filter(l => l.user !== currentUser.name && (!l.user || l.user.trim().toLowerCase() !== curUname));
+            if (confirm("คุณต้องการล้างประวัติการทำรายการใช่หรือไม่?")) {
+                if (currentUser && currentUser.isAdmin) {
+                    systemLogs = [];
+                } else if (currentUser) {
+                    systemLogs = systemLogs.filter(l => l.user !== currentUser.name);
+                }
                 saveData();
-                
-                alert("ลบประวัติการทำรายการของคุณเรียบร้อยแล้ว");
                 openSummaryBook();
             }
         }
