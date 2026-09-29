@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบคลังอุปกรณ์ MEP (Smart Stock Management)</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -50,9 +51,9 @@
                 <div>
                     <h1 class="text-lg font-bold text-gray-100 flex items-center gap-2">
                         MEP Stock Management
-                        <span class="text-xs font-normal px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">Realtime Pro</span>
+                        <span class="text-xs font-normal px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">Cloud Sync Pro</span>
                     </h1>
-                    <p class="text-xs text-gray-400 hidden sm:block">ระบบจัดการคลัง MEP — Mechanical, Electrical, Plumbing และอุปกรณ์ช่างออนไลน์</p>
+                    <p class="text-xs text-gray-400 hidden sm:block">ระบบจัดการคลังและติดตามอุปกรณ์ช่างออนไลน์ (ซิงค์ข้อมูลอัตโนมัติ)</p>
                 </div>
             </div>
 
@@ -227,7 +228,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl flex items-center justify-between shadow-md">
                     <div>
-                        <div class="text-xs text-gray-400 mb-1">สินค้าขาด/เหลือน้อย (&le; 5)[cite: 5]</div>
+                        <div class="text-xs text-gray-400 mb-1">สินค้าขาด/เหลือน้อย (&le; 5)</div>
                         <div id="count-low" class="text-xl font-bold text-red-400">0 รายการ</div>
                     </div>
                     <div class="bg-red-500/10 text-red-400 p-3 rounded-xl border border-red-500/20">
@@ -247,7 +248,7 @@
 
                 <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl flex items-center justify-between shadow-md">
                     <div>
-                        <div class="text-xs text-gray-400 mb-1">สินค้าสต็อกเกิน (&gt; 100)[cite: 5]</div>
+                        <div class="text-xs text-gray-400 mb-1">สินค้าสต็อกเกิน (&gt; 100)</div>
                         <div id="count-over" class="text-xl font-bold text-blue-400">0 รายการ</div>
                     </div>
                     <div class="bg-blue-500/10 text-blue-400 p-3 rounded-xl border border-blue-500/20">
@@ -272,11 +273,10 @@
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">หมวดหมู่อุปกรณ์</label>
                             <select id="tool-category" onchange="updateAutoCodePreview()" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                                <option value="M">⚙️ M - งานเครื่องกล (Mechanical)</option>
                                 <option value="E">⚡ E - งานไฟฟ้า (Electrical)</option>
-                                <option value="P">💧 P - งานประปา/สุขาภิบาล (Plumbing)</option>
-                                <option value="C">❄️ C - งานปรับอากาศ (HVAC)</option>
+                                <option value="W">💧 W - งานระบบประปา/สุขาภิบาล (Plumbing)</option>
                                 <option value="S">🏗️ S - งานโครงสร้าง/สถาปัตย์ (Structural)</option>
+                                <option value="C">❄️ C - งานปรับอากาศ (HVAC)</option>
                                 <option value="T">🔧 T - เครื่องมือช่างทั่วไป (Tools)</option>
                             </select>
                         </div>
@@ -627,7 +627,7 @@
         </div>
     </div>
 
-    <!-- ==================== FIREBASE & JAVASCRIPT APPLICATION LOGIC ==================== -->
+    <!-- ==================== FIREBASE & APP LOGIC ==================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
         import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
@@ -642,7 +642,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        const db = getDatabase(app, "https://pw-hub-8e58c-default-rtdb.asia-southeast1.firebasedatabase.io");
 
         const VVIP_USERNAMES = ['admin', 'DA1104', 'tar_admin', 'tarkun1104'];
 
@@ -685,7 +685,7 @@
         let activeChatTargetId = '';
 
         window.onload = function() {
-            const dbRef = ref(db, 'mep_system_data');
+            const dbRef = ref(db, 'mep_cloud_data');
             onValue(dbRef, (snapshot) => {
                 const serverData = snapshot.val();
                 if (serverData) {
@@ -748,11 +748,9 @@
             if (updated) saveDataToCloud();
         }
 
-        // บันทึกข้อมูลขึ้น Firebase แบบแยก branch
-        // เพื่อให้การแก้ไขคนละส่วนจากหลายเครื่องลดโอกาสเขียนทับกันทั้งระบบ
         async function saveDataToCloud() {
             try {
-                await update(ref(db, 'mep_system_data'), {
+                await update(ref(db, 'mep_cloud_data'), {
                     users: usersDB,
                     companies: companiesList,
                     owners: companyOwnersDB,
@@ -763,8 +761,7 @@
                     logs: systemLogs
                 });
             } catch (error) {
-                console.error("Firebase save error:", error);
-                alert("บันทึกข้อมูลออนไลน์ไม่สำเร็จ กรุณาตรวจสอบ Firebase Database Rules และการเชื่อมต่ออินเทอร์เน็ต");
+                console.error("Firebase sync error:", error);
             }
         }
 
@@ -772,9 +769,7 @@
             let refreshIcon = document.getElementById('refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
-            // onValue() จะรับข้อมูลล่าสุดจาก Firebase ให้อัตโนมัติอยู่แล้ว
-            // การ refresh ครั้งนี้จึงเป็นการบังคับอ่าน snapshot ใหม่
-            onValue(ref(db, 'mep_system_data'), (snapshot) => {
+            onValue(ref(db, 'mep_cloud_data'), (snapshot) => {
                 const serverData = snapshot.val();
                 if (serverData) {
                     usersDB = serverData.users || [];
@@ -862,14 +857,7 @@
                 document.getElementById('nav-profile').classList.add('flex');
                 
                 logAction(currentUser.name, "-", "เข้าสู่ระบบ");
-
-                // ตรวจสอบคลังที่เข้าถึงได้ และเลือกเข้าใช้งานคลังแรกทันที
-                let accessibleCompanies = companiesList.filter(c => canAccessCompany(c));
-                if (accessibleCompanies.length > 0) {
-                    selectCompany(accessibleCompanies[0]);
-                } else {
-                    toggleCompanyModal();
-                }
+                toggleCompanyModal();
             } else {
                 alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!");
             }
@@ -1096,27 +1084,17 @@
             };
             let imgFile = document.getElementById('tool-image').files[0];
             if(imgFile) {
-                if (imgFile.size > 2 * 1024 * 1024) {
-                    alert("ไฟล์รูปภาพเกิน 2MB");
-                    return;
-                }
-
-                const reader = new FileReader();
+                if (imgFile.size > 2 * 1024 * 1024) { alert("ไฟล์รูปภาพเกิน 2MB"); return; }
+                let reader = new FileReader();
                 reader.onload = function(evt) {
-                    const img = new Image();
+                    let img = new Image();
                     img.onload = function() {
-                        const maxSize = 900;
-                        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-                        const canvas = document.createElement('canvas');
-                        canvas.width = Math.max(1, Math.round(img.width * scale));
-                        canvas.height = Math.max(1, Math.round(img.height * scale));
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        newTool.img = canvas.toDataURL('image/jpeg', 0.72);
+                        let canvas = document.createElement('canvas');
+                        canvas.width = 300; canvas.height = 300;
+                        let ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, 300, 300);
+                        newTool.img = canvas.toDataURL('image/jpeg', 0.7);
                         saveTool(newTool);
-                    };
-                    img.onerror = function() {
-                        alert("ไม่สามารถอ่านรูปภาพนี้ได้");
                     };
                     img.src = evt.target.result;
                 };
@@ -1127,11 +1105,6 @@
         };
 
         function saveTool(t) {
-            if (toolsList.some(item => String(item.id).toLowerCase() === String(t.id).toLowerCase())) {
-                alert(`รหัสอุปกรณ์ ${t.id} มีอยู่แล้ว กรุณาใช้รหัสอื่น`);
-                return;
-            }
-
             toolsList.push(t);
             companyToolsDB[currentCompany] = toolsList;
             saveDataToCloud();
@@ -1168,10 +1141,7 @@
             let statusFilter = document.getElementById('filter-status').value;
 
             let filtered = toolsList.filter(t => {
-                let searchable = [t.id, t.name, t.size, t.color, t.unit]
-                    .filter(Boolean)
-                    .join(' ')
-                    .toLowerCase();
+                let searchable = [t.id, t.name, t.size, t.color, t.unit].filter(Boolean).join(' ').toLowerCase();
                 let matchQuery = searchable.includes(query);
                 let matchStatus = true;
                 if (statusFilter === 'low') matchStatus = t.qty <= 5;
@@ -1220,7 +1190,6 @@
             });
         }
 
-        // Modal Controls & Exports
         window.openChatLobby = function() { document.getElementById('chat-modal').classList.remove('hidden'); activeChatType = 'company'; activeChatTargetId = currentCompany; renderChatChannelsAndUsers(); selectChatChannel('company', currentCompany); };
         window.closeChatLobby = function() { document.getElementById('chat-modal').classList.add('hidden'); };
         window.openMemberBook = function() { renderMemberListModal(); document.getElementById('member-modal').classList.remove('hidden'); };
