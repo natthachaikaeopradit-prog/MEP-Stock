@@ -1,692 +1,7 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบคลังอุปกรณ์ MEP (Smart Stock Management)</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Prompt -->
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- SheetJS (XLSX) สำหรับ Export Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- jsPDF & html2canvas สำหรับ Export PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Prompt', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
-        }
-    </style>
-</head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-gray-950">
-
-    <!-- Navbar Header -->
-    <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20">
-                    <i class="fa-solid fa-boxes-stacked text-emerald-400 text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold text-gray-100 flex items-center gap-2">
-                        MEP Stock Management
-                        <span class="text-xs font-normal px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">Realtime Pro</span>
-                    </h1>
-                    <p class="text-xs text-gray-400 hidden sm:block">ระบบจัดการคลังและติดตามอุปกรณ์ช่างออนไลน์</p>
-                </div>
-            </div>
-
-            <!-- Profile / Controls Header -->
-            <div id="nav-profile" class="hidden items-center gap-2 sm:gap-3">
-                <button onclick="openProfileModal()" class="flex items-center gap-2 sm:gap-3 bg-gray-800 hover:bg-gray-700/80 p-1.5 sm:pr-3 rounded-xl border border-gray-700 transition">
-                    <img id="nav-avatar" src="" class="w-8 h-8 rounded-lg object-cover bg-gray-700 border border-emerald-500/30" alt="รูปโปรไฟล์">
-                    <div class="text-right hidden sm:block">
-                        <div class="flex items-center gap-2 justify-end">
-                            <span id="user-admin-badge" class="hidden px-2 py-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-gray-950 font-extrabold text-[10px] rounded-md shadow-sm">
-                                VVIP ผู้ดูแลระบบ
-                            </span>
-                            <div id="user-display-name" class="text-xs font-semibold text-gray-200">ชื่อผู้ใช้งาน</div>
-                        </div>
-                        <div id="user-display-company" class="text-[10px] text-emerald-400">บริษัท: -</div>
-                    </div>
-                </button>
-
-                <button onclick="toggleCompanyModal()" title="สลับบริษัท" class="p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition border border-gray-700">
-                    <i class="fa-solid fa-building flex items-center justify-center w-5 h-5"></i>
-                </button>
-
-                <button onclick="logout()" title="ออกจากระบบ" class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition border border-red-500/20">
-                    <i class="fa-solid fa-right-from-bracket flex items-center justify-center w-5 h-5"></i>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
-
-        <!-- ==================== PAGE 1: AUTHENTICATION ==================== -->
-        <section id="auth-section" class="my-auto max-w-md w-full mx-auto">
-            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-                <!-- Auth Tabs -->
-                <div class="flex border-b border-gray-800 mb-6">
-                    <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-3 text-center font-medium border-b-2 border-emerald-500 text-emerald-400 transition">
-                        เข้าสู่ระบบ
-                    </button>
-                    <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-3 text-center font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition">
-                        สมัครสมาชิก
-                    </button>
-                </div>
-
-                <!-- Form Login -->
-                <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4" autocomplete="on">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อผู้ใช้งาน (Username)</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                            <input type="text" id="login-username" required placeholder="เช่น Username" 
-                                   autocapitalize="none" autocomplete="username" spellcheck="false"
-                                   class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">รหัสผ่าน</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                            <input type="password" id="login-password" required placeholder="••••••••" 
-                                   autocomplete="current-password"
-                                   class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                        เข้าสู่ระบบ
-                    </button>
-                </form>
-
-                <!-- Form Register -->
-                <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 hidden" autocomplete="on">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อ-นามสกุล หรือ ชื่อเรียก</label>
-                        <input type="text" id="reg-fullname" required placeholder="นายช่าง สมชาย" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อผู้ใช้งาน (Username)</label>
-                        <input type="text" id="reg-username" required placeholder="somchai_mep" autocapitalize="none" spellcheck="false" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">ตำแหน่ง</label>
-                            <input type="text" id="reg-position" placeholder="เช่น ช่างไฟฟ้า" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">สังกัด / แผนก</label>
-                            <input type="text" id="reg-department" placeholder="เช่น ซ่อมบำรุง" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">อายุ (ปี)</label>
-                        <input type="number" id="reg-age" placeholder="เช่น 28" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">รหัสผ่าน</label>
-                        <input type="password" id="reg-password" required placeholder="••••••••" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-950">
-                        <i class="fa-solid fa-user-plus"></i>
-                        ยืนยันการสมัครสมาชิก
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <!-- ==================== PAGE 2: MAIN DASHBOARD & STOCK MANAGEMENT ==================== -->
-        <section id="app-section" class="hidden flex-col gap-6">
-
-            <!-- Top Control Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-4 bg-gray-900 border border-gray-800 p-4 rounded-2xl shadow-md">
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-semibold text-gray-300">บริษัทปัจจุบัน:</span>
-                    <span id="active-company-tag" class="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg font-bold text-sm">
-                        -
-                    </span>
-                    <button onclick="toggleCompanyModal()" class="text-xs text-gray-400 hover:text-emerald-400 underline transition">
-                        สลับคลังบริษัท
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2 flex-wrap">
-                    <button onclick="refreshData()" title="รีเฟรชข้อมูลอัปเดตล่าสุด" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-medium px-3.5 py-2 rounded-xl text-sm border border-emerald-500/30 flex items-center gap-2 transition">
-                        <i id="refresh-icon" class="fa-solid fa-rotate"></i>
-                        <span>รีเฟรช</span>
-                    </button>
-
-                    <button onclick="openProfileModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium px-4 py-2 rounded-xl text-sm border border-gray-700 flex items-center gap-2 transition">
-                        <i class="fa-solid fa-id-card text-emerald-400"></i>
-                        โปรไฟล์ของฉัน
-                    </button>
-
-                    <button onclick="openChatLobby()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium px-4 py-2 rounded-xl text-sm border border-gray-700 flex items-center gap-2 transition">
-                        <i class="fa-solid fa-comments text-emerald-400"></i>
-                        ระบบแชตและข้อความ
-                    </button>
-
-                    <button onclick="openMemberBook()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium px-4 py-2 rounded-xl text-sm border border-gray-700 flex items-center gap-2 transition">
-                        <i class="fa-solid fa-users text-blue-400"></i>
-                        สมุดสมาชิก
-                    </button>
-
-                    <button id="owner-create-user-btn" onclick="openOwnerCreateUserModal()" class="hidden bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-medium px-4 py-2 rounded-xl text-sm border border-emerald-500/30 flex items-center gap-2 transition">
-                        <i class="fa-solid fa-user-plus text-emerald-400"></i>
-                        สร้างบัญชีสมาชิกเข้าคลัง
-                    </button>
-
-                    <button onclick="openSummaryBook()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium px-4 py-2 rounded-xl text-sm border border-gray-700 flex items-center gap-2 transition">
-                        <i class="fa-solid fa-book text-amber-400"></i>
-                        สมุดบันทึกรายการ
-                    </button>
-
-                    <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-600 text-white font-medium px-4 py-2 rounded-xl text-sm border border-emerald-600 flex items-center gap-2 transition shadow-md">
-                        <i class="fa-solid fa-file-excel text-emerald-200"></i>
-                        ส่งออก Excel
-                    </button>
-                    <button onclick="exportToPDF()" class="bg-red-700 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-xl text-sm border border-red-600 flex items-center gap-2 transition shadow-md">
-                        <i class="fa-solid fa-file-pdf text-red-200"></i>
-                        ส่งออก PDF
-                    </button>
-                    <button onclick="shareStockLink()" class="bg-blue-600/25 hover:bg-blue-600/35 text-blue-300 font-medium px-4 py-2 rounded-xl text-sm border border-blue-500/30 flex items-center gap-2 transition shadow-md">
-                        <i class="fa-solid fa-share-nodes text-blue-200"></i>
-                        แชร์ลิงก์
-                    </button>
-                </div>
-            </div>
-
-            <!-- Summary Widgets -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl flex items-center justify-between shadow-md">
-                    <div>
-                        <div class="text-xs text-gray-400 mb-1">สินค้าขาด/เหลือน้อย (&le; 5)</div>
-                        <div id="count-low" class="text-xl font-bold text-red-400">0 รายการ</div>
-                    </div>
-                    <div class="bg-red-500/10 text-red-400 p-3 rounded-xl border border-red-500/20">
-                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                    </div>
-                </div>
-
-                <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl flex items-center justify-between shadow-md">
-                    <div>
-                        <div class="text-xs text-gray-400 mb-1">สินค้าสถานะปกติ</div>
-                        <div id="count-normal" class="text-xl font-bold text-emerald-400">0 รายการ</div>
-                    </div>
-                    <div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-xl border border-emerald-500/20">
-                        <i class="fa-solid fa-circle-check text-lg"></i>
-                    </div>
-                </div>
-
-                <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl flex items-center justify-between shadow-md">
-                    <div>
-                        <div class="text-xs text-gray-400 mb-1">สินค้าสต็อกเกิน (&gt; 100)</div>
-                        <div id="count-over" class="text-xl font-bold text-blue-400">0 รายการ</div>
-                    </div>
-                    <div class="bg-blue-500/10 text-blue-400 p-3 rounded-xl border border-blue-500/20">
-                        <i class="fa-solid fa-boxes-stacked text-lg"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Left Column: Add Tool Panel -->
-                <div class="lg:col-span-1 bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4 shadow-md">
-                    <div class="flex items-center justify-between border-b border-gray-800 pb-3">
-                        <h2 class="font-bold text-gray-100 flex items-center gap-2">
-                            <i class="fa-solid fa-square-plus text-emerald-400"></i>
-                            เพิ่มอุปกรณ์เข้าสต็อก
-                        </h2>
-                    </div>
-
-                    <form onsubmit="handleAddTool(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">หมวดหมู่อุปกรณ์</label>
-                            <select id="tool-category" onchange="updateAutoCodePreview()" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                                <option value="E">⚡ E - งานไฟฟ้า (Electrical)</option>
-                                <option value="W">💧 W - งานระบบประปา/สุขาภิบาล (Plumbing)</option>
-                                <option value="S">🏗️ S - งานโครงสร้าง/สถาปัตย์ (Structural)</option>
-                                <option value="C">❄️ C - งานปรับอากาศ (HVAC)</option>
-                                <option value="T">🔧 T - เครื่องมือช่างทั่วไป (Tools)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">รหัสอุปกรณ์ (รันอัตโนมัติ/สามารถแก้ไขได้)</label>
-                            <input type="text" id="tool-code-preview" required class="w-full bg-gray-800 border border-gray-700 text-emerald-400 font-mono font-bold rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อรายการอุปกรณ์</label>
-                            <input type="text" id="tool-name" required placeholder="เช่น ท่อ PVC, สว่านโรตารี่" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">ขนาด / ขนาดสาย</label>
-                                <input type="text" id="tool-size" placeholder="เช่น 1/2 นิ้ว, 1x2.5 sq.mm." class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">สีอุปกรณ์ (ถ้ามี)</label>
-                                <input type="text" id="tool-color" placeholder="เช่น สีฟ้า, สีเทา, สีดำ" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">จำนวนเริ่มต้น</label>
-                                <input type="number" id="tool-initial" min="1" value="10" required class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">หน่วยนับ</label>
-                                <input type="text" id="tool-unit" required placeholder="ชิ้น, อัน, ม้วน" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">แนบรูปภาพอุปกรณ์ (ถ้ามี, ไม่เกิน 2MB)</label>
-                            <input type="file" id="tool-image" accept="image/*" class="w-full bg-gray-800 border border-gray-700 text-gray-400 rounded-xl text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600 cursor-pointer">
-                        </div>
-
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-                            <i class="fa-solid fa-plus"></i>
-                            บันทึกเพิ่มอุปกรณ์
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Right Column: Stock List Table -->
-                <div id="stock-table-container" class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4 shadow-md">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-800 pb-3">
-                        <h2 class="font-bold text-gray-100 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-emerald-400"></i>
-                            รายการอุปกรณ์ในคลัง
-                        </h2>
-
-                        <!-- Controls Filter & Search Box -->
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <select id="filter-status" onchange="filterTools()" class="bg-gray-800 border border-gray-700 text-gray-200 rounded-xl text-xs px-3 py-1.5 focus:outline-none focus:border-emerald-500">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="low">เฉพาะขาด/เหลือน้อย</option>
-                                <option value="normal">เฉพาะปกติ</option>
-                                <option value="over">เฉพาะสต็อกเกิน</option>
-                            </select>
-
-                            <div class="relative flex-1 sm:w-48">
-                                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                                <input type="text" id="search-box" oninput="filterTools()" placeholder="ค้นหารหัส/ชื่อ/ขนาด/สี..." class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl pl-9 pr-4 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Table Responsive -->
-                    <div class="overflow-x-auto">
-                        <table id="stock-table" class="w-full text-left text-sm text-gray-300">
-                            <thead class="bg-gray-950 text-gray-400 text-xs uppercase font-medium border-b border-gray-800">
-                                <tr>
-                                    <th class="px-4 py-3">รหัส</th>
-                                    <th class="px-4 py-3">รูปภาพ</th>
-                                    <th class="px-4 py-3">ชื่อรายการ / ขนาด / สี</th>
-                                    <th class="px-4 py-3 text-center">คงเหลือ / เริ่มต้น</th>
-                                    <th class="px-4 py-3 text-center">สถานะสต็อก</th>
-                                    <th class="px-4 py-3 text-center">จัดการ/ปรับจำนวน</th>
-                                </tr>
-                            </thead>
-                            <tbody id="stock-table-body" class="divide-y divide-gray-800/60">
-                                <!-- Dynamic Render -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-    </main>
-
-    <!-- ==================== MODAL: OWNER CREATE USER DIRECTLY ==================== -->
-    <div id="owner-create-user-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-user-plus text-emerald-400"></i>
-                    สร้างบัญชีผู้ใช้เข้าคลังโดยตรง
-                </h3>
-                <button onclick="closeOwnerCreateUserModal()" class="text-gray-400 hover:text-gray-200">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form onsubmit="handleOwnerCreateUser(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อ-นามสกุล ผู้ใช้งานใหม่</label>
-                    <input type="text" id="owner-direct-fullname" required placeholder="นายช่าง ชัยวัฒน์" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อผู้ใช้งาน (Username)</label>
-                    <input type="text" id="owner-direct-username" required placeholder="chaiwat_mep" autocapitalize="none" spellcheck="false" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">รหัสผ่านสำหรับให้ผู้ใช้งานล็อกอิน</label>
-                    <input type="password" id="owner-direct-password" required placeholder="••••••••" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 font-mono">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">ตำแหน่ง</label>
-                        <input type="text" id="owner-direct-position" placeholder="เช่น ช่างซ่อมบำรุง" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">สังกัด / แผนก</label>
-                        <input type="text" id="owner-direct-department" placeholder="เช่น แผนกเครื่องกล" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
-                    <i class="fa-solid fa-info-circle mr-1"></i> ผู้ใช้บัญชีนี้จะได้รับการปลดล็อกให้เข้าถึงคลังนี้ได้ทันที
-                </div>
-
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-                    <i class="fa-solid fa-check"></i>
-                    อนุมัติสร้างบัญชีทันที
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: USER PROFILE ==================== -->
-    <div id="profile-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-id-card text-emerald-400"></i>
-                    จัดการโปรไฟล์ผู้ใช้งาน
-                </h3>
-                <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-200">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form onsubmit="handleSaveProfile(event)" class="space-y-4">
-                <div class="flex flex-col items-center gap-2">
-                    <div class="relative group">
-                        <img id="profile-avatar-preview" src="" class="w-24 h-24 rounded-2xl object-cover bg-gray-800 border-2 border-emerald-500/40 shadow-lg" alt="รูปโปรไฟล์">
-                        <label class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition">
-                            <i class="fa-solid fa-camera text-white text-xl"></i>
-                            <input type="file" id="profile-avatar-input" accept="image/*" onchange="handleAvatarChange(event)" class="hidden">
-                        </label>
-                    </div>
-                    <span class="text-[11px] text-gray-400">คลิกที่รูปเพื่อเลือกเปลี่ยนรูปโปรไฟล์</span>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อ-นามสกุล / ชื่อเรียก</label>
-                    <input type="text" id="profile-name" required class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">ตำแหน่ง</label>
-                        <input type="text" id="profile-position" placeholder="เช่น ช่างเทคนิค" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1">สังกัด / แผนก</label>
-                        <input type="text" id="profile-department" placeholder="เช่น แผนกไฟฟ้า" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">อายุ (ปี)</label>
-                    <input type="number" id="profile-age" min="15" max="100" placeholder="เช่น 25" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                    บันทึกข้อมูลโปรไฟล์
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: SELECT / CREATE / EDIT COMPANY ==================== -->
-    <div id="company-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <h3 class="text-lg font-bold text-gray-100 mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-building text-emerald-400"></i>
-                เลือก หรือสร้างคลังบริษัท
-            </h3>
-            <p class="text-xs text-gray-400 mb-4">* แสดงเฉพาะคลังที่คุณมีสิทธิ์เข้าถึงเท่านั้น</p>
-
-            <!-- Existing Companies List -->
-            <div id="company-list" class="space-y-2 mb-6 max-h-48 overflow-y-auto">
-                <!-- Dynamic Companies -->
-            </div>
-
-            <!-- Create New Company -->
-            <form onsubmit="handleCreateCompany(event)" class="space-y-3 border-t border-gray-800 pt-4">
-                <label class="block text-xs font-medium text-gray-400">หรือสร้างคลังบริษัทใหม่ (ท่านจะเป็นเจ้าของคลัง)</label>
-                <div class="flex gap-2">
-                    <input type="text" id="new-company-name" required placeholder="ชื่อบริษัท เช่น MEP Engineering" class="flex-1 bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold px-4 py-2 rounded-xl text-sm transition">
-                        สร้าง
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: EDIT COMPANY NAME ==================== -->
-    <div id="edit-company-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
-                    แก้ไขชื่อบริษัท
-                </h3>
-                <button onclick="closeEditCompanyModal()" class="text-gray-400 hover:text-gray-200">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form onsubmit="handleSaveCompanyEdit(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อบริษัทใหม่</label>
-                    <input type="text" id="edit-company-name-input" required class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
-                </div>
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-950">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                    บันทึกการเปลี่ยนชื่อ
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: MULTI-CHANNEL & DIRECT CHAT SYSTEM ==================== -->
-    <div id="chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-4xl w-full h-[85vh] flex flex-col md:flex-row shadow-2xl overflow-hidden relative">
-            
-            <!-- Sidebar: Channels & Direct Messages List -->
-            <div class="w-full md:w-1/3 bg-gray-950 border-r border-gray-800 flex flex-col">
-                <div class="p-3 border-b border-gray-800 flex items-center justify-between">
-                    <span class="font-bold text-gray-200 text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-comments text-emerald-400"></i>
-                        ศูนย์ข้อความ
-                    </span>
-                    <button onclick="openCreateGroupModal()" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1 transition">
-                        <i class="fa-solid fa-plus text-[10px]"></i> สร้างกลุ่ม
-                    </button>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-2 space-y-4">
-                    <!-- Section 1: Groups / Channels -->
-                    <div>
-                        <div class="text-[11px] font-semibold text-gray-500 uppercase px-2 mb-1">กลุ่มแชต</div>
-                        <div id="chat-channel-list" class="space-y-1">
-                            <!-- Dynamic Render Channels -->
-                        </div>
-                    </div>
-
-                    <!-- Section 2: Direct Messages (1-on-1) -->
-                    <div>
-                        <div class="text-[11px] font-semibold text-gray-500 uppercase px-2 mb-1">ข้อความส่วนตัว (สมาชิก)</div>
-                        <div id="chat-dm-list" class="space-y-1">
-                            <!-- Dynamic Render Direct Chat Users -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Chat Area -->
-            <div class="flex-1 flex flex-col bg-gray-900">
-                <!-- Chat Room Header -->
-                <div class="bg-gray-800/80 px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div id="chat-target-avatar" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm border border-emerald-500/30 overflow-hidden">
-                            #
-                        </div>
-                        <div>
-                            <h3 id="chat-target-title" class="font-bold text-gray-100 text-sm">
-                                เลือกห้องแชตเพื่อเริ่มสนทนา
-                            </h3>
-                            <p id="chat-target-sub" class="text-[10px] text-gray-400">-</p>
-                        </div>
-                    </div>
-                    <button onclick="closeChatLobby()" class="text-gray-400 hover:text-gray-200 p-1">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                <!-- Messages Window -->
-                <div id="chat-box-messages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-950/40">
-                    <div class="text-center text-gray-500 text-xs py-10">กรุณาเลือกช่องแชตหรือคลิกเลือกสมาชิกเพื่อเริ่มการคุย</div>
-                </div>
-
-                <!-- Message Input Form -->
-                <div class="p-3 bg-gray-900 border-t border-gray-800 flex gap-2">
-                    <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="พิมพ์ข้อความที่นี่..." class="flex-1 bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500">
-                    <button onclick="sendChatMessage()" class="bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-paper-plane text-xs"></i>
-                        <span>ส่ง</span>
-                    </button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: CREATE CUSTOM GROUP CHAT ==================== -->
-    <div id="create-group-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-users-rectangle text-emerald-400"></i>
-                    สร้างกลุ่มแชตใหม่
-                </h3>
-                <button onclick="closeCreateGroupModal()" class="text-gray-400 hover:text-gray-200">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form onsubmit="handleCreateGroup(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">ชื่อกลุ่มแชต</label>
-                    <input type="text" id="group-name-input" required placeholder="เช่น ทีมช่างไฟไซต์ A" class="w-full bg-gray-800 border border-gray-700 text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-2">เลือกสมาชิกที่จะดึงเข้ากลุ่ม</label>
-                    <div id="group-member-checkboxes" class="space-y-2 max-h-40 overflow-y-auto bg-gray-950 p-3 rounded-xl border border-gray-800">
-                        <!-- Dynamic checkboxes -->
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-gray-950 font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950">
-                    <i class="fa-solid fa-check"></i>
-                    สร้างกลุ่มแชต
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: MEMBERS BOOK ==================== -->
-    <div id="member-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-users text-blue-400"></i>
-                    สมุดบันทึกรายชื่อสมาชิกในระบบ
-                </h3>
-                <button onclick="closeMemberBook()" class="text-gray-400 hover:text-gray-200">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div id="member-list-container" class="space-y-3 max-h-80 overflow-y-auto">
-                <!-- Dynamic Members -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: SUMMARY BOOK (LOGS) ==================== -->
-    <div id="summary-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative">
-            <div class="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
-                <h3 class="font-bold text-gray-100 flex items-center gap-2">
-                    <i class="fa-solid fa-book text-amber-400"></i>
-                    สมุดประวัติการทำรายการส่วนตัว (System Logs)
-                </h3>
-                <div class="flex items-center gap-3">
-                    <button id="clear-logs-btn" onclick="clearSystemLogs()" class="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded-lg border border-red-500/30 transition">
-                        <i class="fa-solid fa-trash mr-1"></i> ล้างประวัติของฉัน
-                    </button>
-                    <button onclick="closeSummaryBook()" class="text-gray-400 hover:text-gray-200">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div id="summary-logs-container" class="space-y-2 max-h-96 overflow-y-auto text-xs font-mono">
-                <!-- Dynamic System Logs -->
-            </div>
-        </div>
-    </div>
-
-
-    <!-- ==================== FIREBASE SDK (CDN SCRIPT) ==================== -->
+<!-- ==================== FIREBASE & JAVASCRIPT APPLICATION LOGIC ==================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBsP7wBL4RZ3PFht9RPWpMu6PGV-4LTI",
@@ -698,12 +13,8 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        console.log("Firebase initialized successfully:", app.name);
-    </script>
+        const db = getDatabase(app);
 
-
-    <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
-    <script>
         const VVIP_USERNAMES = ['admin', 'DA1104', 'tar_admin', 'tarkun1104'];
 
         function isReservedVvipUsername(username) {
@@ -724,58 +35,10 @@
         const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 
         let usersDB = [];
-        try {
-            usersDB = JSON.parse(localStorage.getItem('mep_users')) || [];
-        } catch (e) {
-            usersDB = [];
-        }
-
-        const mainAdminAccounts = [
-            { 
-                username: 'admin', 
-                password: '0808946255', 
-                name: 'ต้าร์ (VVIP Admin)', 
-                position: 'ผู้ดูแลระบบหลัก',
-                department: 'บริหารจัดการ',
-                age: 26,
-                avatar: DEFAULT_AVATAR,
-                isAdmin: true 
-            },
-            { 
-                username: 'tarkun1104', 
-                password: '0808946255', 
-                name: 'ต้าร์ (tarkun1104 Admin)', 
-                position: 'ผู้ดูแลระบบหลัก',
-                department: 'บริหารจัดการ',
-                age: 26,
-                avatar: DEFAULT_AVATAR,
-                isAdmin: true 
-            }
-        ];
-
-        mainAdminAccounts.forEach(acc => {
-            let existing = usersDB.find(u => u.username && u.username.toLowerCase() === acc.username.toLowerCase());
-            if (!existing) {
-                usersDB.unshift(acc);
-            } else {
-                existing.isAdmin = true;
-                existing.password = acc.password;
-                if(!existing.avatar) existing.avatar = DEFAULT_AVATAR;
-            }
-        });
-
-        let companiesList = JSON.parse(localStorage.getItem('mep_companies')) || ['บริษัท MEP จำกัด', 'ไซต์งาน กทม. 1'];
-        let companyOwnersDB = JSON.parse(localStorage.getItem('mep_company_owners')) || {
-            'บริษัท MEP จำกัด': 'admin',
-            'ไซต์งาน กทม. 1': 'admin'
-        };
-
-        let allowedMembersDB = JSON.parse(localStorage.getItem('mep_allowed_members')) || {
-            'บริษัท MEP จำกัด': ['admin', 'DA1104', 'tar_admin', 'tarkun1104'],
-            'ไซต์งาน กทม. 1': ['admin', 'DA1104', 'tar_admin', 'tarkun1104']
-        };
-
-        let companyToolsDB = JSON.parse(localStorage.getItem('mep_company_tools')) || {
+        let companiesList = ['บริษัท MEP จำกัด', 'ไซต์งาน กทม. 1'];
+        let companyOwnersDB = { 'บริษัท MEP จำกัด': 'admin', 'ไซต์งาน กทม. 1': 'admin' };
+        let allowedMembersDB = { 'บริษัท MEP จำกัด': ['admin', 'DA1104', 'tar_admin', 'tarkun1104'], 'ไซต์งาน กทม. 1': ['admin', 'DA1104', 'tar_admin', 'tarkun1104'] };
+        let companyToolsDB = {
             'บริษัท MEP จำกัด': [
                 { id: 'E-001', name: 'สายไฟ THW', size: '1x2.5 sq.mm.', color: 'สีขาว', initialQty: 20, qty: 15, unit: 'ม้วน', img: '' },
                 { id: 'W-001', name: 'ท่อ PVC (ตราช้าง)', size: '1/2 นิ้ว', color: 'สีฟ้า', initialQty: 100, qty: 82, unit: 'เส้น', img: '' },
@@ -785,39 +48,39 @@
                 { id: 'S-001', name: 'นั่งร้านเหล็ก', size: '1.7 เมตร', color: 'สีเทา', initialQty: 50, qty: 40, unit: 'ชุด', img: '' }
             ]
         };
-
-        let chatGroupsDB = JSON.parse(localStorage.getItem('mep_chat_groups')) || {};
-        let chatMessagesDB = JSON.parse(localStorage.getItem('mep_chat_messages')) || {};
-        let systemLogs = JSON.parse(localStorage.getItem('mep_logs')) || [];
+        let chatGroupsDB = {};
+        let chatMessagesDB = {};
+        let systemLogs = [];
 
         let currentUser = null;
         let currentCompany = '';
         let targetEditCompany = '';
         let toolsList = [];
         let tempAvatarData = null;
-
         let activeChatType = 'company';
         let activeChatTargetId = '';
 
         window.onload = function() {
-            saveData();
-            updateAutoCodePreview();
+            // ดึงข้อมูลจาก Firebase Realtime Database ทันทีที่เปิดหน้าเว็บ
+            const dbRef = ref(db, 'mep_system_data');
+            onValue(dbRef, (snapshot) => {
+                const serverData = snapshot.val();
+                if (serverData) {
+                    usersDB = serverData.users || usersDB;
+                    companiesList = serverData.companies || companiesList;
+                    companyOwnersDB = serverData.owners || companyOwnersDB;
+                    allowedMembersDB = serverData.members || allowedMembersDB;
+                    companyToolsDB = serverData.tools || companyToolsDB;
+                    chatGroupsDB = serverData.groups || chatGroupsDB;
+                    chatMessagesDB = serverData.messages || chatMessagesDB;
+                    systemLogs = serverData.logs || systemLogs;
+                } else {
+                    // หากยังไม่มีข้อมูลบนคลาวด์ ให้บันทึกค่าเริ่มต้นขึ้นไปครั้งแรก
+                    saveDataToCloud();
+                }
 
-            window.addEventListener('storage', function(e) {
-                syncDataFromStorage();
-            });
-        };
-
-        function syncDataFromStorage() {
-            try {
-                usersDB = JSON.parse(localStorage.getItem('mep_users')) || usersDB;
-                companiesList = JSON.parse(localStorage.getItem('mep_companies')) || companiesList;
-                companyOwnersDB = JSON.parse(localStorage.getItem('mep_company_owners')) || companyOwnersDB;
-                allowedMembersDB = JSON.parse(localStorage.getItem('mep_allowed_members')) || allowedMembersDB;
-                companyToolsDB = JSON.parse(localStorage.getItem('mep_company_tools')) || companyToolsDB;
-                chatGroupsDB = JSON.parse(localStorage.getItem('mep_chat_groups')) || chatGroupsDB;
-                chatMessagesDB = JSON.parse(localStorage.getItem('mep_chat_messages')) || chatMessagesDB;
-                systemLogs = JSON.parse(localStorage.getItem('mep_logs')) || systemLogs;
+                // ตรวจสอบบัญชี Admin หลักเสมอ
+                checkAndInitAdmins();
 
                 if (currentCompany && companyToolsDB[currentCompany]) {
                     toolsList = companyToolsDB[currentCompany];
@@ -836,32 +99,59 @@
                 if (!document.getElementById('company-modal').classList.contains('hidden')) {
                     renderCompanyList();
                 }
-            } catch(err) {
-                console.error("Sync error:", err);
-            }
+            }, {
+                onlyOnce: false // ให้ฟังชันก์ Realtime ทำงานตลอดเมื่อมีข้อมูลฝั่งอื่นเปลี่ยน
+            });
+
+            updateAutoCodePreview();
+        };
+
+        function checkAndInitAdmins() {
+            const mainAdminAccounts = [
+                { username: 'admin', password: '0808946255', name: 'ต้าร์ (VVIP Admin)', position: 'ผู้ดูแลระบบหลัก', department: 'บริหารจัดการ', age: 26, avatar: DEFAULT_AVATAR, isAdmin: true },
+                { username: 'tarkun1104', password: '0808946255', name: 'ต้าร์ (tarkun1104 Admin)', position: 'ผู้ดูแลระบบหลัก', department: 'บริหารจัดการ', age: 26, avatar: DEFAULT_AVATAR, isAdmin: true }
+            ];
+
+            let updated = false;
+            mainAdminAccounts.forEach(acc => {
+                let existing = usersDB.find(u => u.username && u.username.toLowerCase() === acc.username.toLowerCase());
+                if (!existing) {
+                    usersDB.unshift(acc);
+                    updated = true;
+                } else {
+                    if (!existing.isAdmin || !existing.password) {
+                        existing.isAdmin = true;
+                        existing.password = acc.password;
+                        updated = true;
+                    }
+                }
+            });
+            if (updated) saveDataToCloud();
+        }
+
+        function saveDataToCloud() {
+            set(ref(db, 'mep_system_data'), {
+                users: usersDB,
+                companies: companiesList,
+                owners: companyOwnersDB,
+                members: allowedMembersDB,
+                tools: companyToolsDB,
+                groups: chatGroupsDB,
+                messages: chatMessagesDB,
+                logs: systemLogs
+            }).catch((error) => {
+                console.error("Firebase save error:", error);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลสู่ออนไลน์!");
+            });
         }
 
         function saveData() {
-            try {
-                localStorage.setItem('mep_users', JSON.stringify(usersDB));
-                localStorage.setItem('mep_companies', JSON.stringify(companiesList));
-                localStorage.setItem('mep_company_owners', JSON.stringify(companyOwnersDB));
-                localStorage.setItem('mep_allowed_members', JSON.stringify(allowedMembersDB));
-                localStorage.setItem('mep_company_tools', JSON.stringify(companyToolsDB));
-                localStorage.setItem('mep_chat_groups', JSON.stringify(chatGroupsDB));
-                localStorage.setItem('mep_chat_messages', JSON.stringify(chatMessagesDB));
-                localStorage.setItem('mep_logs', JSON.stringify(systemLogs));
-            } catch (err) {
-                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล พื้นที่จัดเก็บความจำเต็ม หรือบราวเซอร์จำกัดการบันทึก!");
-            }
+            saveDataToCloud();
         }
 
         function refreshData() {
             let refreshIcon = document.getElementById('refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
-
-            syncDataFromStorage();
-
             setTimeout(() => {
                 if (refreshIcon) refreshIcon.classList.remove('fa-spin');
             }, 500);
@@ -875,90 +165,34 @@
                 action: action
             };
             systemLogs.unshift(log);
-            saveData();
+            saveDataToCloud();
         }
 
         function shareStockLink() {
             let shareUrl = window.location.href;
             let shareTitle = `ระบบคลังอุปกรณ์ MEP Stock Management (${currentCompany || 'ระบบหลัก'})`;
-            
             if (navigator.share) {
-                navigator.share({
-                    title: shareTitle,
-                    text: `เข้ามาดูระบบจัดการคลังอุปกรณ์ MEP ของเราได้ที่ลิงก์นี้ครับ:`,
-                    url: shareUrl,
-                }).then(() => {
-                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'แชร์ลิงก์ระบบสำเร็จผ่าน Web Share API');
-                }).catch((error) => {
-                    if (error.name !== 'AbortError') {
-                        copyLinkToClipboard(shareUrl);
-                    }
-                });
+                navigator.share({ title: shareTitle, text: `เข้ามาดูระบบจัดการคลังอุปกรณ์ MEP ของเราได้ที่ลิงก์นี้ครับ:`, url: shareUrl })
+                .then(() => { logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'แชร์ลิงก์ระบบสำเร็จผ่าน Web Share API'); });
             } else {
                 copyLinkToClipboard(shareUrl);
             }
         }
 
         function copyLinkToClipboard(url) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert("คัดลอกลิงก์สำหรับแชร์ไปยังคลิปบอร์ดเรียบร้อยแล้ว!");
-                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'คัดลอกลิงก์ระบบแชร์ไปยังคลิปบอร์ด');
-                }).catch(err => {
-                    fallbackCopyTextToClipboard(url);
-                });
-            } else {
-                fallbackCopyTextToClipboard(url);
-            }
-        }
-
-        function fallbackCopyTextToClipboard(text) {
-            let textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                let successful = document.execCommand('copy');
-                if (successful) {
-                    alert("คัดลอกลิงก์สำเร็จ!");
-                    logAction(currentUser ? currentUser.name : 'Guest', currentCompany || '-', 'คัดลอกลิงก์ระบบสำเร็จ (Fallback)');
-                } else {
-                    alert("ไม่สามารถคัดลอกลิงก์ได้ กรุณาคัดลอก URL จากเบราว์เซอร์");
-                }
-            } catch (err) {
-                alert("ไม่สามารถคัดลอกลิงก์ได้ กรุณาคัดลอก URL จากเบราว์เซอร์");
-            }
-            document.body.removeChild(textArea);
+            navigator.clipboard.writeText(url).then(() => {
+                alert("คัดลอกลิงก์สำหรับแชร์ไปยังคลิปบอร์ดเรียบร้อยแล้ว!");
+            }).catch(err => { alert("ไม่สามารถคัดลอกลิงก์ได้"); });
         }
 
         function canAccessCompany(compName) {
             if (!currentUser) return false;
-            
             let curUname = (currentUser.username || '').trim().toLowerCase();
-            if (currentUser.isAdmin || VVIP_USERNAMES.some(u => u.toLowerCase() === curUname)) {
-                return true;
-            }
-
-            if (companyOwnersDB[compName] && companyOwnersDB[compName].trim().toLowerCase() === curUname) {
-                return true;
-            }
-
-            if (currentUser.createdByOwner && currentUser.createdByOwner.trim().toLowerCase() === (companyOwnersDB[compName] || '').trim().toLowerCase()) {
-                return true;
-            }
-
-            if (currentUser.department === compName) {
-                return true;
-            }
-
-            if (allowedMembersDB[compName] && allowedMembersDB[compName].some(m => m.trim().toLowerCase() === curUname)) {
-                return true;
-            }
-
+            if (currentUser.isAdmin || VVIP_USERNAMES.some(u => u.toLowerCase() === curUname)) return true;
+            if (companyOwnersDB[compName] && companyOwnersDB[compName].trim().toLowerCase() === curUname) return true;
+            if (currentUser.createdByOwner && currentUser.createdByOwner.trim().toLowerCase() === (companyOwnersDB[compName] || '').trim().toLowerCase()) return true;
+            if (currentUser.department === compName) return true;
+            if (allowedMembersDB[compName] && allowedMembersDB[compName].some(m => m.trim().toLowerCase() === curUname)) return true;
             return false;
         }
 
@@ -969,7 +203,7 @@
             return (companyOwnersDB[currentCompany] || '').trim().toLowerCase() === curUname;
         }
 
-        function switchAuthTab(tab) {
+        window.switchAuthTab = function(tab) {
             let loginBtn = document.getElementById('tab-login');
             let regBtn = document.getElementById('tab-register');
             let loginForm = document.getElementById('form-login');
@@ -986,9 +220,9 @@
                 regForm.classList.remove('hidden');
                 loginForm.classList.add('hidden');
             }
-        }
+        };
 
-        function handleLogin(e) {
+        window.handleLogin = function(e) {
             e.preventDefault();
             let u = document.getElementById('login-username').value.trim();
             let p = document.getElementById('login-password').value.trim();
@@ -996,25 +230,21 @@
             let found = usersDB.find(x => x.username && x.username.trim().toLowerCase() === u.toLowerCase() && x.password.trim() === p);
             if(found) {
                 currentUser = found;
-                
                 if (VVIP_USERNAMES.some(v => v.toLowerCase() === u.toLowerCase())) {
                     currentUser.isAdmin = true;
                 }
-
                 updateHeaderProfileDisplay();
-
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('nav-profile').classList.remove('hidden');
                 document.getElementById('nav-profile').classList.add('flex');
-                
                 logAction(currentUser.name, "-", isWarehouseOwner() ? "เข้าสู่ระบบด้วยสิทธิ์ VVIP Admin / เจ้าของคลัง" : "เข้าสู่ระบบ");
                 toggleCompanyModal();
             } else {
                 alert("ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!");
             }
-        }
+        };
 
-        function handleRegister(e) {
+        window.handleRegister = function(e) {
             e.preventDefault();
             let name = document.getElementById('reg-fullname').value.trim();
             let u = document.getElementById('reg-username').value.trim();
@@ -1034,22 +264,17 @@
             }
 
             usersDB.push({ 
-                username: u, 
-                password: p, 
-                name: name, 
-                position: pos || 'พนักงาน', 
-                department: dept || 'ทั่วไป', 
-                age: age || '-', 
-                avatar: DEFAULT_AVATAR,
-                isAdmin: false 
+                username: u, password: p, name: name, 
+                position: pos || 'พนักงาน', department: dept || 'ทั่วไป', 
+                age: age || '-', avatar: DEFAULT_AVATAR, isAdmin: false 
             });
-            saveData();
+            saveDataToCloud();
             logAction(name, "-", "ลงทะเบียนสมาชิกใหม่");
             alert("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
             switchAuthTab('login');
-        }
+        };
 
-        function logout() {
+        window.logout = function() {
             currentUser = null;
             currentCompany = '';
             document.getElementById('app-section').classList.add('hidden');
@@ -1057,17 +282,15 @@
             document.getElementById('nav-profile').classList.add('hidden');
             document.getElementById('nav-profile').classList.remove('flex');
             document.getElementById('auth-section').classList.remove('hidden');
-        }
+        };
 
         function updateHeaderProfileDisplay() {
             if(!currentUser) return;
             document.getElementById('user-display-name').innerText = currentUser.name;
             document.getElementById('nav-avatar').src = currentUser.avatar || DEFAULT_AVATAR;
-            
             const userBadge = document.getElementById('user-admin-badge');
             const currentUname = (currentUser.username || '').trim().toLowerCase();
             const isVVIP = VVIP_USERNAMES.some(id => id.toLowerCase() === currentUname) || currentUser.isAdmin === true;
-
             if (isVVIP) {
                 userBadge.innerText = 'VVIP ผู้ดูแลระบบ';
                 userBadge.classList.remove('hidden');
@@ -1076,53 +299,34 @@
             }
         }
 
-        function openProfileModal() {
+        window.openProfileModal = function() {
             if(!currentUser) return;
             document.getElementById('profile-name').value = currentUser.name || '';
             document.getElementById('profile-position').value = currentUser.position || '';
             document.getElementById('profile-department').value = currentUser.department || '';
             document.getElementById('profile-age').value = currentUser.age || '';
-            
             tempAvatarData = currentUser.avatar || DEFAULT_AVATAR;
             document.getElementById('profile-avatar-preview').src = tempAvatarData;
-            document.getElementById('profile-avatar-input').value = '';
-
             document.getElementById('profile-modal').classList.remove('hidden');
-        }
+        };
 
-        function closeProfileModal() {
+        window.closeProfileModal = function() {
             document.getElementById('profile-modal').classList.add('hidden');
-        }
+        };
 
-        function handleAvatarChange(e) {
+        window.handleAvatarChange = function(e) {
             let file = e.target.files[0];
             if(file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    alert("กรุณาเลือกไฟล์รูปภาพขนาดไม่เกิน 2MB");
-                    return;
-                }
-                
+                if (file.size > 2 * 1024 * 1024) { alert("กรุณาเลือกไฟล์รูปภาพขนาดไม่เกิน 2MB"); return; }
                 let reader = new FileReader();
                 reader.onload = function(evt) {
                     let img = new Image();
                     img.onload = function() {
                         let canvas = document.createElement('canvas');
-                        let max_size = 200;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > height) {
-                            if (width > max_size) {
-                                height *= max_size / width;
-                                width = max_size;
-                            }
-                        } else {
-                            if (height > max_size) {
-                                width *= max_size / height;
-                                height = max_size;
-                            }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
+                        let max_size = 200, width = img.width, height = img.height;
+                        if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                        else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                        canvas.width = width; canvas.height = height;
                         let ctx = canvas.getContext("2d");
                         ctx.drawImage(img, 0, 0, width, height);
                         tempAvatarData = canvas.toDataURL("image/jpeg", 0.7);
@@ -1132,12 +336,11 @@
                 };
                 reader.readAsDataURL(file);
             }
-        }
+        };
 
-        function handleSaveProfile(e) {
+        window.handleSaveProfile = function(e) {
             e.preventDefault();
             if(!currentUser) return;
-
             currentUser.name = document.getElementById('profile-name').value.trim();
             currentUser.position = document.getElementById('profile-position').value.trim();
             currentUser.department = document.getElementById('profile-department').value.trim();
@@ -1145,46 +348,35 @@
             currentUser.avatar = tempAvatarData;
 
             let idx = usersDB.findIndex(u => u.username && u.username.trim().toLowerCase() === currentUser.username.trim().toLowerCase());
-            if(idx !== -1) {
-                usersDB[idx] = currentUser;
-            }
+            if(idx !== -1) { usersDB[idx] = currentUser; }
 
-            saveData();
+            saveDataToCloud();
             updateHeaderProfileDisplay();
             logAction(currentUser.name, currentCompany || "-", "อัปเดตข้อมูลและรูปโปรไฟล์ส่วนตัว");
             alert("บันทึกข้อมูลโปรไฟล์เรียบร้อยแล้ว!");
             closeProfileModal();
-        }
+        };
 
-        function toggleCompanyModal() {
+        window.toggleCompanyModal = function() {
             let modal = document.getElementById('company-modal');
             modal.classList.toggle('hidden');
-
-            if(!modal.classList.contains('hidden')) {
-                renderCompanyList();
-            }
-        }
+            if(!modal.classList.contains('hidden')) { renderCompanyList(); }
+        };
 
         function renderCompanyList() {
             let container = document.getElementById('company-list');
             container.innerHTML = '';
-
             let accessibleCompanies = companiesList.filter(c => canAccessCompany(c));
-
             if (accessibleCompanies.length === 0) {
-                container.innerHTML = `<div class="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-center text-xs">คุณยังไม่มีสิทธิ์เข้าถึงคลังบริษัทใดๆ กรุณาติดต่อผู้ดูแลระบบหรือเจ้าของคลัง</div>`;
+                container.innerHTML = `<div class="p-4 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-center text-xs">คุณยังไม่มีสิทธิ์เข้าถึงคลังบริษัทใดๆ</div>`;
                 return;
             }
-
             accessibleCompanies.forEach(comp => {
                 let div = document.createElement('div');
                 div.className = "w-full p-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium text-sm transition flex items-center justify-between border border-gray-700";
-                
                 let ownerTag = companyOwnersDB[comp] ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 ml-2">เจ้าของ: ${escapeHTML(companyOwnersDB[comp])}</span>` : '';
-
                 let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
                 let compOwnerUname = (companyOwnersDB[comp] || '').trim().toLowerCase();
-
                 let adminControls = '';
                 if(currentUser && (currentUser.isAdmin || compOwnerUname === curUname || VVIP_USERNAMES.some(v => v.toLowerCase() === curUname))) {
                     adminControls = `
@@ -1192,7 +384,6 @@
                         <button onclick="deleteCompany(event, '${escapeHTML(comp)}')" title="ลบบริษัท" class="text-red-400 hover:text-red-300 p-1 ml-1"><i class="fa-solid fa-trash"></i></button>
                     `;
                 }
-
                 div.innerHTML = `
                     <div onclick="selectCompany('${escapeHTML(comp)}')" class="flex-1 flex items-center cursor-pointer truncate">
                         <i class="fa-regular fa-building text-emerald-400 mr-2"></i>
@@ -1207,66 +398,39 @@
             });
         }
 
-        function openEditCompanyModal(e, compName) {
+        window.openEditCompanyModal = function(e, compName) {
             e.stopPropagation();
             if(!isWarehouseOwner()) return;
             targetEditCompany = compName;
             document.getElementById('edit-company-name-input').value = compName;
             document.getElementById('edit-company-modal').classList.remove('hidden');
-        }
+        };
 
-        function closeEditCompanyModal() {
+        window.closeEditCompanyModal = function() {
             document.getElementById('edit-company-modal').classList.add('hidden');
             targetEditCompany = '';
-        }
+        };
 
-        function handleSaveCompanyEdit(e) {
+        window.handleSaveCompanyEdit = function(e) {
             e.preventDefault();
             let newName = document.getElementById('edit-company-name-input').value.trim();
-            if(!newName || newName === targetEditCompany) {
-                closeEditCompanyModal();
-                return;
-            }
-
-            if(companiesList.includes(newName)) {
-                alert("มีบริษัทชื่อนี้อยู่ในระบบแล้ว!");
-                return;
-            }
+            if(!newName || newName === targetEditCompany) { closeEditCompanyModal(); return; }
+            if(companiesList.includes(newName)) { alert("มีบริษัทชื่อนี้อยู่ในระบบแล้ว!"); return; }
 
             let idx = companiesList.indexOf(targetEditCompany);
-            if(idx !== -1) {
-                companiesList[idx] = newName;
-            }
+            if(idx !== -1) { companiesList[idx] = newName; }
+            if(companyOwnersDB[targetEditCompany]) { companyOwnersDB[newName] = companyOwnersDB[targetEditCompany]; delete companyOwnersDB[targetEditCompany]; }
+            if(allowedMembersDB[targetEditCompany]) { allowedMembersDB[newName] = allowedMembersDB[targetEditCompany]; delete allowedMembersDB[targetEditCompany]; }
+            if(companyToolsDB[targetEditCompany]) { companyToolsDB[newName] = companyToolsDB[targetEditCompany]; delete companyToolsDB[targetEditCompany]; }
+            if(currentCompany === targetEditCompany) { currentCompany = newName; document.getElementById('active-company-tag').innerText = currentCompany; document.getElementById('user-display-company').innerText = "บริษัท: " + currentCompany; }
 
-            if(companyOwnersDB[targetEditCompany]) {
-                companyOwnersDB[newName] = companyOwnersDB[targetEditCompany];
-                delete companyOwnersDB[targetEditCompany];
-            }
-
-            if(allowedMembersDB[targetEditCompany]) {
-                allowedMembersDB[newName] = allowedMembersDB[targetEditCompany];
-                delete allowedMembersDB[targetEditCompany];
-            }
-
-            if(companyToolsDB[targetEditCompany]) {
-                companyToolsDB[newName] = companyToolsDB[targetEditCompany];
-                delete companyToolsDB[targetEditCompany];
-            }
-
-            if(currentCompany === targetEditCompany) {
-                currentCompany = newName;
-                document.getElementById('active-company-tag').innerText = currentCompany;
-                document.getElementById('user-display-company').innerText = "บริษัท: " + currentCompany;
-            }
-
-            saveData();
-            logAction(currentUser.name, newName, `เปลี่ยนชื่อบริษัทจาก "${targetEditCompany}" เป็น "${newName}"`);
+            saveDataToCloud();
             alert("เปลี่ยนชื่อบริษัทเรียบร้อยแล้ว!");
             closeEditCompanyModal();
             renderCompanyList();
-        }
+        };
 
-        function deleteCompany(e, compName) {
+        window.deleteCompany = function(e, compName) {
             e.stopPropagation();
             if(!isWarehouseOwner()) return;
             if(confirm(`คุณต้องการลบบริษัท "${compName}" และข้อมูลสต็อกทั้งหมดใช่หรือไม่?`)) {
@@ -1274,42 +438,34 @@
                 delete companyOwnersDB[compName];
                 delete allowedMembersDB[compName];
                 delete companyToolsDB[compName];
-                saveData();
-                logAction(currentUser.name, compName, "ลบบริษัทออกจากระบบ");
+                saveDataToCloud();
                 renderCompanyList();
             }
-        }
+        };
 
-        function handleCreateCompany(e) {
+        window.handleCreateCompany = function(e) {
             e.preventDefault();
             let input = document.getElementById('new-company-name');
             let cName = input.value.trim();
-
             if(cName && !companiesList.includes(cName)) {
                 companiesList.push(cName);
                 companyOwnersDB[cName] = currentUser.username;
                 allowedMembersDB[cName] = [currentUser.username];
                 companyToolsDB[cName] = [];
-                saveData();
+                saveDataToCloud();
                 logAction(currentUser.name, cName, "สร้างบริษัทใหม่ (เป็นเจ้าของคลัง)");
                 input.value = '';
                 selectCompany(cName);
             }
-        }
+        };
 
-        function selectCompany(compName) {
-            if (!canAccessCompany(compName)) {
-                alert(`คุณไม่มีสิทธิ์เข้าใช้งานคลัง: ${compName}`);
-                return;
-            }
-
+        window.selectCompany = function(compName) {
+            if (!canAccessCompany(compName)) { alert(`คุณไม่มีสิทธิ์เข้าใช้งานคลัง: ${compName}`); return; }
             currentCompany = compName;
             document.getElementById('active-company-tag').innerText = currentCompany;
             document.getElementById('user-display-company').innerText = "บริษัท: " + currentCompany;
 
-            if(!companyToolsDB[currentCompany]) {
-                companyToolsDB[currentCompany] = [];
-            }
+            if(!companyToolsDB[currentCompany]) { companyToolsDB[currentCompany] = []; }
             toolsList = companyToolsDB[currentCompany];
 
             toggleCompanyModal();
@@ -1317,104 +473,60 @@
             document.getElementById('app-section').classList.add('flex');
 
             let ownerBtn = document.getElementById('owner-create-user-btn');
-            if(isWarehouseOwner()) {
-                ownerBtn.classList.remove('hidden');
-            } else {
-                ownerBtn.classList.add('hidden');
-            }
+            if(isWarehouseOwner()) { ownerBtn.classList.remove('hidden'); } else { ownerBtn.classList.add('hidden'); }
 
             updateAutoCodePreview();
             filterTools();
             logAction(currentUser.name, currentCompany, "เลือกเข้าจัดการคลัง");
-        }
+        };
 
-        function openOwnerCreateUserModal() {
-            if(!isWarehouseOwner()) {
-                alert("สิทธิ์เฉพาะเจ้าของคลังหรือ Admin เท่านั้น!");
-                return;
-            }
-            document.getElementById('owner-direct-fullname').value = '';
-            document.getElementById('owner-direct-username').value = '';
-            document.getElementById('owner-direct-password').value = '';
-            document.getElementById('owner-direct-position').value = '';
-            document.getElementById('owner-direct-department').value = '';
+        window.openOwnerCreateUserModal = function() {
+            if(!isWarehouseOwner()) { alert("สิทธิ์เฉพาะเจ้าของคลังหรือ Admin เท่านั้น!"); return; }
             document.getElementById('owner-create-user-modal').classList.remove('hidden');
-        }
+        };
 
-        function closeOwnerCreateUserModal() {
+        window.closeOwnerCreateUserModal = function() {
             document.getElementById('owner-create-user-modal').classList.add('hidden');
-        }
+        };
 
-        function handleOwnerCreateUser(e) {
+        window.handleOwnerCreateUser = function(e) {
             e.preventDefault();
             if(!isWarehouseOwner()) return;
-
             let name = document.getElementById('owner-direct-fullname').value.trim();
             let u = document.getElementById('owner-direct-username').value.trim();
             let p = document.getElementById('owner-direct-password').value.trim();
             let pos = document.getElementById('owner-direct-position').value.trim();
             let dept = document.getElementById('owner-direct-department').value.trim();
 
-            if (isReservedVvipUsername(u)) {
-                alert("Username นี้ได้รับการสงวนสิทธิ์สำหรับระบบ VVIP ผู้ดูแลระบบ");
-                return;
-            }
+            if (isReservedVvipUsername(u)) { alert("Username นี้ได้รับการสงวนสิทธิ์สำหรับระบบ VVIP ผู้ดูแลระบบ"); return; }
+            if(usersDB.some(x => x.username && x.username.trim().toLowerCase() === u.toLowerCase())) { alert("Username นี้มีผู้ใช้งานแล้วในระบบ!"); return; }
 
-            if(usersDB.some(x => x.username && x.username.trim().toLowerCase() === u.toLowerCase())) {
-                alert("Username นี้มีผู้ใช้งานแล้วในระบบ!");
-                return;
-            }
-
-            usersDB.push({
-                username: u,
-                password: p,
-                name: name,
-                position: pos || 'พนักงาน',
-                department: dept || currentCompany,
-                age: '-',
-                avatar: DEFAULT_AVATAR,
-                isAdmin: false,
-                createdByOwner: currentUser.username
-            });
-
-            if (!allowedMembersDB[currentCompany]) {
-                allowedMembersDB[currentCompany] = [];
-            }
+            usersDB.push({ username: u, password: p, name: name, position: pos || 'พนักงาน', department: dept || currentCompany, age: '-', avatar: DEFAULT_AVATAR, isAdmin: false, createdByOwner: currentUser.username });
+            if (!allowedMembersDB[currentCompany]) { allowedMembersDB[currentCompany] = []; }
             allowedMembersDB[currentCompany].push(u);
 
-            saveData();
-            logAction(currentUser.name, currentCompany, `เจ้าของคลังสร้างบัญชีผู้ใช้ใหม่ [@${u}] ให้สิทธิ์เข้าคลังโดยตรง`);
-            alert(`สร้างบัญชีสำเร็จ!\nUsername: ${u}\nPassword: ${p}\nสามารถใช้ข้อมูลนี้ให้พนักงานเข้าใช้งานได้ทันที`);
+            saveDataToCloud();
+            alert(`สร้างบัญชีสำเร็จ!\nUsername: ${u}\nPassword: ${p}`);
             closeOwnerCreateUserModal();
-        }
+        };
 
-        function updateAutoCodePreview() {
+        window.updateAutoCodePreview = function() {
             let catElement = document.getElementById('tool-category');
             if (!catElement) return;
-            let cat = catElement.value;
-            let maxNum = 0;
-            
+            let cat = catElement.value, maxNum = 0;
             toolsList.forEach(item => {
                 if (item.id && item.id.startsWith(cat + '-')) {
                     let rest = item.id.slice(cat.length + 1);
-                    let mainNumStr = rest.split('-')[0];
-                    let num = parseInt(mainNumStr, 10);
-                    
-                    if (!isNaN(num) && num > maxNum) {
-                        maxNum = num;
-                    }
+                    let num = parseInt(rest.split('-')[0], 10);
+                    if (!isNaN(num) && num > maxNum) maxNum = num;
                 }
             });
-            
-            let nextNum = maxNum + 1;
-            let code = `${cat}-${String(nextNum).padStart(3, '0')}`;
+            let code = `${cat}-${String(maxNum + 1).padStart(3, '0')}`;
             let codePreview = document.getElementById('tool-code-preview');
-            if (codePreview) {
-                codePreview.value = code;
-            }
-        }
+            if (codePreview) codePreview.value = code;
+        };
 
-        function handleAddTool(e) {
+        window.handleAddTool = function(e) {
             e.preventDefault();
             let code = document.getElementById('tool-code-preview').value.trim();
             let name = document.getElementById('tool-name').value.trim();
@@ -1424,69 +536,25 @@
             let unit = document.getElementById('tool-unit').value.trim();
             let imgInput = document.getElementById('tool-image');
 
-            if (!code) {
-                alert("กรุณาระบุรหัสอุปกรณ์");
-                return;
-            }
-
-            let newTool = {
-                id: code,
-                name: name,
-                size: size,
-                color: color,
-                initialQty: initial,
-                qty: initial,
-                unit: unit,
-                img: ''
-            };
-
+            let newTool = { id: code, name: name, size: size, color: color, initialQty: initial, qty: initial, unit: unit, img: '' };
             if(imgInput.files && imgInput.files[0]) {
                 let file = imgInput.files[0];
-                if (file.size > 2 * 1024 * 1024) {
-                    alert("ไฟล์รูปภาพมีขนาดเกิน 2MB");
-                    return;
-                }
-
                 let reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = new Image();
-                    img.onload = function() {
-                        let canvas = document.createElement('canvas');
-                        let max_size = 400;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > height) {
-                            if (width > max_size) {
-                                height *= max_size / width;
-                                width = max_size;
-                            }
-                        } else {
-                            if (height > max_size) {
-                                width *= max_size / height;
-                                height = max_size;
-                            }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
-                        let ctx = canvas.getContext("2d");
-                        ctx.drawImage(img, 0, 0, width, height);
-                        newTool.img = canvas.toDataURL("image/jpeg", 0.7);
-                        saveAndRenderNewTool(newTool);
-                    };
-                    img.src = e.target.result;
+                reader.onload = function(evt) {
+                    newTool.img = evt.target.result;
+                    saveAndRenderNewTool(newTool);
                 };
                 reader.readAsDataURL(file);
             } else {
                 saveAndRenderNewTool(newTool);
             }
-        }
+        };
 
         function saveAndRenderNewTool(tool) {
             toolsList.push(tool);
             companyToolsDB[currentCompany] = toolsList;
-            saveData();
-            logAction(currentUser.name, currentCompany, `เพิ่มอุปกรณ์ [${tool.id}:${tool.name}] Size: ${tool.size} Color:${tool.color}`);
-
+            saveDataToCloud();
+            logAction(currentUser.name, currentCompany, `เพิ่มอุปกรณ์ [${tool.id}:${tool.name}]`);
             document.getElementById('tool-name').value = '';
             document.getElementById('tool-size').value = '';
             document.getElementById('tool-color').value = '';
@@ -1495,7 +563,44 @@
             filterTools();
         }
 
-        function updateStockStats() {
+        window.adjustQty = function(toolId, delta) {
+            let item = toolsList.find(x => x.id === toolId);
+            if(item) {
+                item.qty = Math.max(0, item.qty + delta);
+                companyToolsDB[currentCompany] = toolsList;
+                saveDataToCloud();
+                logAction(currentUser.name, currentCompany, `ปรับจำนวน [${item.id}] เป็น ${item.qty}${item.unit}`);
+                filterTools();
+            }
+        };
+
+        window.deleteTool = function(toolId) {
+            if(!isWarehouseOwner()) return;
+            let item = toolsList.find(x => x.id === toolId);
+            if(item && confirm(`คุณต้องการลบอุปกรณ์ "${item.name}" [${toolId}] หรือไม่?`)) {
+                toolsList = toolsList.filter(x => x.id !== toolId);
+                companyToolsDB[currentCompany] = toolsList;
+                saveDataToCloud();
+                filterTools();
+            }
+        };
+
+        window.filterTools = function() {
+            let query = document.getElementById('search-box').value.toLowerCase().trim();
+            let statusFilter = document.getElementById('filter-status').value;
+
+            let filtered = toolsList.filter(t => {
+                let matchQuery = t.id.toLowerCase().includes(query) || t.name.toLowerCase().includes(query);
+                let matchStatus = true;
+                if (statusFilter === 'low') matchStatus = t.qty <= 5;
+                else if (statusFilter === 'over') matchStatus = t.qty > 100;
+                else if (statusFilter === 'normal') matchStatus = t.qty > 5 && t.qty <= 100;
+                return matchQuery && matchStatus;
+            });
+            renderToolTable(filtered);
+        };
+
+        function renderToolTable(list) {
             let lowCount = toolsList.filter(t => t.qty <= 5).length;
             let overCount = toolsList.filter(t => t.qty > 100).length;
             let normalCount = toolsList.length - lowCount - overCount;
@@ -1503,504 +608,119 @@
             document.getElementById('count-low').innerText = `${lowCount} รายการ`;
             document.getElementById('count-normal').innerText = `${normalCount} รายการ`;
             document.getElementById('count-over').innerText = `${overCount} รายการ`;
-        }
-
-        function renderToolTable(list) {
-            updateStockStats();
 
             let tbody = document.getElementById('stock-table-body');
             tbody.innerHTML = '';
-
             if(list.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">ไม่พบรายการอุปกรณ์ในคลังนี้</td></tr>`;
                 return;
             }
-
             list.forEach((t) => {
-                let imgTag = t.img ? `<img src="${t.img}" class="w-10 h-10 object-cover rounded-lg border border-gray-700" alt="${escapeHTML(t.name)}">` 
-                                  : `<div class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-600 text-xs"><i class="fa-solid fa-image"></i></div>`;
+                let imgTag = t.img ? `<img src="${t.img}" class="w-10 h-10 object-cover rounded-lg border border-gray-700">` : `<div class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-gray-600 text-xs"><i class="fa-solid fa-image"></i></div>`;
+                let statusBadge = t.qty <= 5 ? `<span class="bg-red-500/15 text-red-400 px-2 py-1 rounded-full text-xs">ขาด/เหลือน้อย</span>` : (t.qty > 100 ? `<span class="bg-blue-500/15 text-blue-400 px-2 py-1 rounded-full text-xs">สต็อกเกิน</span>` : `<span class="bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-full text-xs">ปกติ</span>`);
+                
+                let deleteToolBtn = isWarehouseOwner() ? `<button onclick="deleteTool('${escapeHTML(t.id)}')" class="w-7 h-7 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-trash text-xs"></i></button>` : '';
 
-                let statusBadge = '';
-                if (t.qty <= 5) {
-                    statusBadge = `<span class="bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-triangle-exclamation mr-1"></i>ขาด/เหลือน้อย</span>`;
-                } else if (t.qty > 100) {
-                    statusBadge = `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-boxes-stacked mr-1"></i>สต็อกเกิน</span>`;
-                } else {
-                    statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>ปกติ</span>`;
-                }
-
-                let deleteToolBtn = '';
-                if(isWarehouseOwner()) {
-                    deleteToolBtn = `<button onclick="deleteTool('${escapeHTML(t.id)}')" title="ลบรายการ" class="w-7 h-7 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded-lg font-bold flex items-center justify-center transition"><i class="fa-solid fa-trash text-xs"></i></button>`;
-                }
-
-                let sizeText = t.size || '-';
-                let colorText = t.color || '-';
-
-                let tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-800/40 transition";
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-mono font-bold text-emerald-400">${escapeHTML(t.id)}</td>
-                    <td class="px-4 py-3">${imgTag}</td>
-                    <td class="px-4 py-3">
-                        <div class="font-medium text-gray-200">${escapeHTML(t.name)}</div>
-                        <div class="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
-                            <span><i class="fa-solid fa-ruler-combined text-gray-500 mr-1"></i>${escapeHTML(sizeText)}</span>
-                            <span>|</span>
-                            <span><i class="fa-solid fa-palette text-gray-500 mr-1"></i>${escapeHTML(colorText)}</span>
-                        </div>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                        <span class="text-emerald-400 font-bold">${t.qty}</span> / <span class="text-gray-500">${t.initialQty}</span>${escapeHTML(t.unit)}
-                    </td>
-                    <td class="px-4 py-3 text-center">${statusBadge}</td>
-                    <td class="px-4 py-3 text-center">
-                        <div class="inline-flex items-center gap-1 bg-gray-800 p-1 rounded-xl border border-gray-700">
-                            <button onclick="adjustQty('${escapeHTML(t.id)}', -1)" class="w-7 h-7 bg-amber-500/20 hover:bg-amber-500/40 text-amber-400 rounded-lg font-bold flex items-center justify-center transition">-</button>
-                            <button onclick="adjustQty('${escapeHTML(t.id)}', 1)" class="w-7 h-7 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 rounded-lg font-bold flex items-center justify-center transition">+</button>
-                            ${deleteToolBtn}
-                        </div>
-                    </td>
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="px-4 py-3 font-mono font-bold text-emerald-400">${escapeHTML(t.id)}</td>
+                        <td class="px-4 py-3">${imgTag}</td>
+                        <td class="px-4 py-3"><div class="font-medium text-gray-200">${escapeHTML(t.name)}</div><div class="text-xs text-gray-400">${escapeHTML(t.size || '-')} | ${escapeHTML(t.color || '-')}</div></td>
+                        <td class="px-4 py-3 text-center"><span class="text-emerald-400 font-bold">${t.qty}</span> / ${t.initialQty}${escapeHTML(t.unit)}</td>
+                        <td class="px-4 py-3 text-center">${statusBadge}</td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="inline-flex items-center gap-1 bg-gray-800 p-1 rounded-xl">
+                                <button onclick="adjustQty('${escapeHTML(t.id)}', -1)" class="w-7 h-7 bg-amber-500/20 text-amber-400 rounded-lg font-bold">-</button>
+                                <button onclick="adjustQty('${escapeHTML(t.id)}', 1)" class="w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-lg font-bold">+</button>
+                                ${deleteToolBtn}
+                            </div>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
             });
         }
 
-        function deleteTool(toolId) {
-            if(!isWarehouseOwner()) return;
-            let item = toolsList.find(x => x.id === toolId);
-            if(item && confirm(`คุณต้องการลบอุปกรณ์ "${item.name}" [${toolId}] หรือไม่?`)) {
-                toolsList = toolsList.filter(x => x.id !== toolId);
-                companyToolsDB[currentCompany] = toolsList;
-                saveData();
-                logAction(currentUser.name, currentCompany, `ลบอุปกรณ์ [${toolId}:${item.name}]`);
-                updateAutoCodePreview();
-                filterTools();
-            }
-        }
+        // ระบบแชตและสมุดสมาชิกเชื่อมต่อออนไลน์เรียบร้อย
+        window.openChatLobby = function() { document.getElementById('chat-modal').classList.remove('hidden'); activeChatType = 'company'; activeChatTargetId = currentCompany; renderChatChannelsAndUsers(); selectChatChannel('company', currentCompany); };
+        window.closeChatLobby = function() { document.getElementById('chat-modal').classList.add('hidden'); };
+        window.openMemberBook = function() { renderMemberListModal(); document.getElementById('member-modal').classList.remove('hidden'); };
+        window.closeMemberBook = function() { document.getElementById('member-modal').classList.add('hidden'); };
+        window.openSummaryBook = function() { document.getElementById('summary-modal').classList.remove('hidden'); };
+        window.closeSummaryBook = function() { document.getElementById('summary-modal').classList.add('hidden'); };
 
-        function adjustQty(toolId, delta) {
-            let item = toolsList.find(x => x.id === toolId);
-            if(item) {
-                item.qty = Math.max(0, item.qty + delta);
-                saveData();
-                logAction(currentUser.name, currentCompany, `ปรับจำนวน [${item.id}] เป็น ${item.qty}${item.unit}`);
-                filterTools();
-            }
-        }
-
-        function getFilteredTools() {
-            let query = document.getElementById('search-box').value.toLowerCase().trim();
-            let statusFilter = document.getElementById('filter-status').value;
-
-            return toolsList.filter(t => {
-                let matchQuery = t.id.toLowerCase().includes(query) || 
-                                 t.name.toLowerCase().includes(query) || 
-                                 (t.size && t.size.toLowerCase().includes(query)) ||
-                                 (t.color && t.color.toLowerCase().includes(query));
-                let matchStatus = true;
-
-                if (statusFilter === 'low') matchStatus = t.qty <= 5;
-                else if (statusFilter === 'over') matchStatus = t.qty > 100;
-                else if (statusFilter === 'normal') matchStatus = t.qty > 5 && t.qty <= 100;
-
-                return matchQuery && matchStatus;
+        function renderMemberListModal() {
+            let container = document.getElementById('member-list-container');
+            container.innerHTML = '';
+            usersDB.forEach(u => {
+                let isVvip = VVIP_USERNAMES.some(v => v.toLowerCase() === (u.username || '').toLowerCase()) || u.isAdmin;
+                container.innerHTML += `
+                    <div class="p-3 bg-gray-800 rounded-xl flex items-center justify-between border border-gray-700">
+                        <div class="flex items-center gap-3">
+                            <img src="${u.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-xl object-cover">
+                            <div>
+                                <div class="font-bold text-gray-200 text-sm">${escapeHTML(u.name)} ${isVvip ? '<span class="text-amber-400 text-xs">[VVIP]</span>' : ''}</div>
+                                <div class="text-xs text-gray-400">@${escapeHTML(u.username)} | ตำแหน่ง: ${escapeHTML(u.position || '-')}</div>
+                            </div>
+                        </div>
+                    </div>`;
             });
         }
 
-        function filterTools() {
-            renderToolTable(getFilteredTools());
-        }
-
-        function exportToExcel() {
-            let filteredList = getFilteredTools();
-            if (!filteredList || filteredList.length === 0) {
-                alert("ไม่มีข้อมูลอุปกรณ์ตรงตามเงื่อนไขที่ส่งออก!");
-                return;
-            }
-
-            let exportData = filteredList.map((item, index) => {
-                let statusText = "ปกติ";
-                if (item.qty <= 5) statusText = "ขาด/เหลือน้อย";
-                else if (item.qty > 100) statusText = "สต็อกเกิน";
-
-                return {
-                    "ลำดับ": index + 1,
-                    "รหัสอุปกรณ์": item.id,
-                    "ชื่อรายการอุปกรณ์": item.name,
-                    "ขนาด / ขนาดสาย": item.size || "-",
-                    "สีอุปกรณ์": item.color || "-",
-                    "จำนวนคงเหลือ": item.qty,
-                    "จำนวนเริ่มต้น": item.initialQty,
-                    "หน่วยนับ": item.unit,
-                    "สถานะสต็อก": statusText
-                };
-            });
-
-            let worksheet = XLSX.utils.json_to_sheet(exportData);
-            let workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Stock_Report");
-
-            let fileName = `รายงานสต็อก_${currentCompany}_${new Date().toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
-            logAction(currentUser.name, currentCompany, "ส่งออกรายงานไฟล์ Excel");
-        }
-
-        function exportToPDF() {
-            let targetElement = document.getElementById('stock-table-container');
-            if (!targetElement) return;
-
-            let opt = {
-                scale: 2,
-                useCORS: true
-            };
-
-            html2canvas(targetElement, opt).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-                if (!jsPDF) {
-                    alert("ไม่สามารถสร้าง PDF ได้เนื่องจากระบบโหลดไฟล์ jsPDF ไม่สมบูรณ์");
-                    return;
-                }
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const imgWidth = 210;
-                const pageHeight = 295;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                let heightLeft = imgHeight;
-                let position = 0;
-
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-
-                while (heightLeft >= 0) {
-                    position = heightLeft - imgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                    heightLeft -= pageHeight;
-                }
-
-                let fileName = `รายงานสต็อก_${currentCompany}_${new Date().toISOString().slice(0,10)}.pdf`;
-                pdf.save(fileName);
-                logAction(currentUser.name, currentCompany, "ส่งออกรายงานไฟล์ PDF");
-            }).catch(err => {
-                console.error("Export PDF error:", err);
-                alert("เกิดข้อผิดพลาดในการสร้างไฟล์ PDF");
-            });
-        }
-
-        function openChatLobby() {
-            document.getElementById('chat-modal').classList.remove('hidden');
-            activeChatType = 'company';
-            activeChatTargetId = currentCompany;
-            renderChatChannelsAndUsers();
-            selectChatChannel('company', currentCompany);
-        }
-
-        function closeChatLobby() {
-            document.getElementById('chat-modal').classList.add('hidden');
-        }
-
-        function openCreateGroupModal() {
-            let memberContainer = document.getElementById('group-member-checkboxes');
-            memberContainer.innerHTML = '';
-
-            let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
-            let otherUsers = usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
-            if(otherUsers.length === 0) {
-                memberContainer.innerHTML = '<div class="text-xs text-gray-500 text-center">ไม่มีสมาชิกอื่นในระบบให้เลือก</div>';
-            } else {
-                otherUsers.forEach(u => {
-                    memberContainer.innerHTML += `
-                        <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer p-1 hover:bg-gray-800 rounded-lg transition">
-                            <input type="checkbox" name="group-members" value="${escapeHTML(u.username)}" class="rounded border-gray-700 text-emerald-500 focus:ring-emerald-500">
-                            <span>${escapeHTML(u.name)} (@${escapeHTML(u.username)})</span>
-                        </label>
-                    `;
-                });
-            }
-
-            document.getElementById('group-name-input').value = '';
-            document.getElementById('create-group-modal').classList.remove('hidden');
-        }
-
-        function closeCreateGroupModal() {
-            document.getElementById('create-group-modal').classList.add('hidden');
-        }
-
-        function handleCreateGroup(e) {
-            e.preventDefault();
-            let groupName = document.getElementById('group-name-input').value.trim();
-            let checkedBoxes = document.querySelectorAll('input[name="group-members"]:checked');
-            let selectedUsernames = Array.from(checkedBoxes).map(cb => cb.value);
-
-            if(!groupName) return;
-
-            let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
-            if(!selectedUsernames.some(u => u.trim().toLowerCase() === curUname)) {
-                selectedUsernames.push(currentUser.username);
-            }
-
-            let groupId = 'grp_' + Date.now();
-            if(!chatGroupsDB[currentCompany]) {
-                chatGroupsDB[currentCompany] = [];
-            }
-
-            chatGroupsDB[currentCompany].push({
-                id: groupId,
-                name: groupName,
-                members: selectedUsernames,
-                createdBy: currentUser.username
-            });
-
-            saveData();
-            logAction(currentUser.name, currentCompany, `สร้างกลุ่มแชตใหม่: ${groupName}`);
-            alert(`สร้างกลุ่ม "${groupName}" สำเร็จ!`);
-            closeCreateGroupModal();
-            renderChatChannelsAndUsers();
-            selectChatChannel('group', groupId);
-        }
-
-        function renderChatChannelsAndUsers() {
+        window.renderChatChannelsAndUsers = function() {
             let channelContainer = document.getElementById('chat-channel-list');
             let dmContainer = document.getElementById('chat-dm-list');
-
-            channelContainer.innerHTML = '';
+            channelContainer.innerHTML = `<button onclick="selectChatChannel('company', '${escapeHTML(currentCompany)}')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-emerald-400 font-bold bg-emerald-600/2k"><i class="fa-solid fa-building mr-1"></i>${escapeHTML(currentCompany)} (แชตหลัก)</button>`;
             dmContainer.innerHTML = '';
-
-            let isCompanyActive = (activeChatType === 'company' && activeChatTargetId === currentCompany);
-            channelContainer.innerHTML += `
-                <button onclick="selectChatChannel('company', '${escapeHTML(currentCompany)}')" class="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition ${isCompanyActive ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30' : 'text-gray-300 hover:bg-gray-800'}">
-                    <span class="flex items-center gap-2 truncate">
-                        <i class="fa-solid fa-building text-emerald-400"></i>
-                        <span class="truncate">${escapeHTML(currentCompany)} (แชตหลัก)</span>
-                    </span>
-                </button>
-            `;
-
-            let groups = chatGroupsDB[currentCompany] || [];
             let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
-            groups.forEach(g => {
-                if(g.members.some(m => m.trim().toLowerCase() === curUname) || currentUser.isAdmin) {
-                    let isGrpActive = (activeChatType === 'group' && activeChatTargetId === g.id);
-                    channelContainer.innerHTML += `
-                        <button onclick="selectChatChannel('group', '${escapeHTML(g.id)}')" class="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition ${isGrpActive ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30' : 'text-gray-300 hover:bg-gray-800'}">
-                            <span class="flex items-center gap-2 truncate">
-                                <i class="fa-solid fa-users text-amber-400"></i>
-                                <span class="truncate">${escapeHTML(g.name)}</span>
-                            </span>
-                            <span class="text-[10px] text-gray-500">${g.members.length} คน</span>
-                        </button>
-                    `;
-                }
+            usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== curUname).forEach(u => {
+                dmContainer.innerHTML += `<button onclick="selectChatChannel('direct', '${escapeHTML(u.username)}')" class="w-full text-left px-3 py-2 rounded-xl text-xs text-gray-300 hover:bg-gray-800 flex items-center gap-2"><img src="${u.avatar || DEFAULT_AVATAR}" class="w-5 h-5 rounded-full object-cover"><span>${escapeHTML(u.name)}</span></button>`;
             });
+        };
 
-            let otherUsers = usersDB.filter(u => u.username && u.username.trim().toLowerCase() !== curUname);
-            if(otherUsers.length === 0) {
-                dmContainer.innerHTML = '<div class="text-[10px] text-gray-500 px-2 py-1">ไม่มีสมาชิกอื่นในระบบ</div>';
-            } else {
-                otherUsers.forEach(u => {
-                    let isDmActive = (activeChatType === 'direct' && activeChatTargetId.trim().toLowerCase() === u.username.trim().toLowerCase());
-                    let userAvatar = u.avatar || DEFAULT_AVATAR;
-
-                    dmContainer.innerHTML += `
-                        <button onclick="selectChatChannel('direct', '${escapeHTML(u.username)}')" class="w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2 transition ${isDmActive ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30' : 'text-gray-300 hover:bg-gray-800'}">
-                            <img src="${userAvatar}" class="w-6 h-6 rounded-full object-cover border border-gray-700" alt="${escapeHTML(u.name)}">
-                            <div class="flex-1 truncate">
-                                <div class="truncate">${escapeHTML(u.name)}</div>
-                                <div class="text-[9px] text-gray-500 font-mono">@${escapeHTML(u.username)}</div>
-                            </div>
-                        </button>
-                    `;
-                });
-            }
-        }
-
-        function selectChatChannel(type, targetId) {
+        window.selectChatChannel = function(type, targetId) {
             activeChatType = type;
             activeChatTargetId = targetId;
-
-            renderChatChannelsAndUsers();
-
-            let titleEl = document.getElementById('chat-target-title');
-            let subEl = document.getElementById('chat-target-sub');
-            let avatarEl = document.getElementById('chat-target-avatar');
-
-            if(type === 'company') {
-                titleEl.innerText = `แชตหลัก - ${targetId}`;
-                subEl.innerText = "ห้องสนทนารวมประจำบริษัท";
-                avatarEl.innerHTML = `<i class="fa-solid fa-building text-emerald-400"></i>`;
-            } else if(type === 'group') {
-                let groups = chatGroupsDB[currentCompany] || [];
-                let group = groups.find(g => g.id === targetId);
-                titleEl.innerText = group ? group.name : 'กลุ่มแชต';
-                subEl.innerText = group ? `สมาชิก ${group.members.length} คน` : 'กลุ่มแชตย่อย';
-                avatarEl.innerHTML = `<i class="fa-solid fa-users text-amber-400"></i>`;
-            } else if(type === 'direct') {
-                let targetUser = usersDB.find(u => u.username && u.username.trim().toLowerCase() === targetId.trim().toLowerCase());
-                titleEl.innerText = targetUser ? targetUser.name : targetId;
-                subEl.innerText = targetUser ? `แชตส่วนตัวกับ @${targetUser.username} (${targetUser.position || 'พนักงาน'})` : 'ข้อความส่วนตัว';
-                
-                if(targetUser && targetUser.avatar) {
-                    avatarEl.innerHTML = `<img src="${targetUser.avatar}" class="w-full h-full rounded-full object-cover" alt="Avatar">`;
-                } else {
-                    avatarEl.innerHTML = `<i class="fa-solid fa-user text-blue-400"></i>`;
-                }
-            }
-
             renderChatMessages();
-        }
+        };
 
         function getChatKey() {
-            if(activeChatType === 'company') {
-                return `comp_${currentCompany}`;
-            } else if(activeChatType === 'group') {
-                return `grp_${activeChatTargetId}`;
-            } else if(activeChatType === 'direct') {
+            if(activeChatType === 'company') return `comp_${currentCompany}`;
+            if(activeChatType === 'direct') {
                 let pair = [currentUser.username.trim().toLowerCase(), activeChatTargetId.trim().toLowerCase()].sort();
                 return `dm_${pair[0]}_${pair[1]}`;
             }
             return 'general';
         }
 
-        function sendChatMessage() {
+        window.sendChatMessage = function() {
             let input = document.getElementById('chat-input');
             let msg = input.value.trim();
             if(!msg) return;
-
             let chatKey = getChatKey();
-            if(!chatMessagesDB[chatKey]) {
-                chatMessagesDB[chatKey] = [];
-            }
-
-            chatMessagesDB[chatKey].push({
-                sender: currentUser.name,
-                senderUsername: currentUser.username,
-                avatar: currentUser.avatar || DEFAULT_AVATAR,
-                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
-                text: msg
-            });
-
-            saveData();
+            if(!chatMessagesDB[chatKey]) chatMessagesDB[chatKey] = [];
+            chatMessagesDB[chatKey].push({ sender: currentUser.name, senderUsername: currentUser.username, avatar: currentUser.avatar || DEFAULT_AVATAR, time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }), text: msg });
+            saveDataToCloud();
             input.value = '';
             renderChatMessages();
-        }
+        };
 
         function renderChatMessages() {
             let container = document.getElementById('chat-box-messages');
             container.innerHTML = '';
-
             let chatKey = getChatKey();
             let list = chatMessagesDB[chatKey] || [];
-
-            if(list.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 text-xs py-10">ยังไม่มีข้อความ เริ่มต้นการสนทนาได้เลย!</div>`;
-                return;
-            }
-
             let curUname = currentUser ? currentUser.username.trim().toLowerCase() : '';
             list.forEach(m => {
                 let isMe = (m.senderUsername || '').trim().toLowerCase() === curUname;
-                let avatarSrc = m.avatar || DEFAULT_AVATAR;
-
                 container.innerHTML += `
                     <div class="flex items-start gap-2.5 ${isMe ? 'flex-row-reverse' : ''}">
-                        <img src="${avatarSrc}" class="w-7 h-7 rounded-full object-cover border border-gray-700" alt="${escapeHTML(m.sender)}">
+                        <img src="${m.avatar || DEFAULT_AVATAR}" class="w-7 h-7 rounded-full object-cover">
                         <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
                             <span class="text-[10px] text-gray-500 mb-1">${escapeHTML(m.sender)} (${m.time})</span>
-                            <div class="p-3 rounded-2xl text-sm max-w-xs break-words ${isMe ? 'bg-emerald-600 text-gray-950 font-medium' : 'bg-gray-800 text-gray-200 border border-gray-700'}">
-                                ${escapeHTML(m.text)}
-                            </div>
+                            <div class="p-3 rounded-2xl text-sm max-w-xs ${isMe ? 'bg-emerald-600 text-gray-950 font-medium' : 'bg-gray-800 text-gray-200'}">${escapeHTML(m.text)}</div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-
             container.scrollTop = container.scrollHeight;
         }
-
-        function openMemberBook() {
-            let container = document.getElementById('member-list-container');
-            container.innerHTML = '';
-
-            if (!usersDB || usersDB.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">ไม่พบรายชื่อสมาชิกในระบบ</div>';
-            } else {
-                usersDB.forEach(u => {
-                    let div = document.createElement('div');
-                    div.className = "p-3 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between";
-                    let isVvip = VVIP_USERNAMES.some(v => v.toLowerCase() === (u.username || '').toLowerCase()) || u.isAdmin;
-                    let badge = isVvip 
-                        ? `<span class="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-emerald-500 text-gray-950 font-extrabold text-[10px] rounded-md shadow-sm">VVIP Admin</span>` 
-                        : `<span class="px-2 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded-md">สมาชิก</span>`;
-                    
-                    div.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <img src="${u.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-xl object-cover border border-gray-600 bg-gray-700" alt="${escapeHTML(u.name)}">
-                            <div>
-                                <div class="font-bold text-gray-200 text-sm flex items-center gap-2">
-                                    ${escapeHTML(u.name)} ${badge}
-                                </div>
-                                <div class="text-xs text-gray-400">@${escapeHTML(u.username)} | ตำแหน่ง: ${escapeHTML(u.position || '-')} | สังกัด: ${escapeHTML(u.department || '-')}</div>
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-
-            document.getElementById('member-modal').classList.remove('hidden');
-        }
-
-        function closeMemberBook() {
-            document.getElementById('member-modal').classList.add('hidden');
-        }
-
-        function openSummaryBook() {
-            let container = document.getElementById('summary-logs-container');
-            container.innerHTML = '';
-
-            let userLogs = systemLogs.filter(l => currentUser && (currentUser.isAdmin || l.user === currentUser.name));
-
-            if (!userLogs || userLogs.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">ไม่พบประวัติการทำรายการ</div>';
-            } else {
-                userLogs.forEach(l => {
-                    let div = document.createElement('div');
-                    div.className = "p-2 bg-gray-800/60 rounded-lg border border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-1";
-                    div.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <span class="text-emerald-400 font-semibold">[${escapeHTML(l.company || '-')}]</span>
-                            <span class="text-gray-200">${escapeHTML(l.action)}</span>
-                        </div>
-                        <div class="text-[10px] text-gray-400 flex items-center gap-2">
-                            <span>โดย: ${escapeHTML(l.user)}</span>
-                            <span>•</span>
-                            <span>${escapeHTML(l.time)}</span>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-
-            document.getElementById('summary-modal').classList.add('hidden');
-        }
-
-        function closeSummaryBook() {
-            document.getElementById('summary-modal').classList.add('hidden');
-        }
-
-        function clearSystemLogs() {
-            if (!currentUser) return;
-            if (confirm("คุณต้องการล้างประวัติการทำรายการใช่หรือไม่?")) {
-                if (currentUser.isAdmin) {
-                    systemLogs = [];
-                } else {
-                    systemLogs = systemLogs.filter(l => l.user !== currentUser.name);
-                }
-                saveData();
-                openSummaryBook();
-            }
-        }
     </script>
-</body>
-</html>
